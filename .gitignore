@@ -3,3 +3,5 @@
 /frontend/.claude/
 /frontend/.vscode/
 /frontend/node_modules/
+/infra/.env
+/infra/secrets/
