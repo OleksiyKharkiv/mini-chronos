@@ -1,4 +1,4 @@
-<mxfile host="drawio-plugin" modified="2026-04-06T13:27:12.903Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="22.1.22" etag="TAOxfYnThnNLe99bgxG2" type="embed">
+<mxfile host="drawio-plugin" modified="2026-04-06T13:30:55.143Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="22.1.22" etag="PVw45eqBNuOF6duOE4Nr" type="embed">
   <diagram id="vyfxRG1b69LZ8aE4jUvn" name="Architecture">
     <mxGraphModel dx="1401" dy="1107" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
@@ -8,16 +8,16 @@
           <mxGeometry x="400" y="20" width="400" height="40" as="geometry" />
         </mxCell>
         <mxCell id="3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;arcSize=5;" vertex="1" parent="1">
-          <mxGeometry x="40" y="100" width="200" height="300" as="geometry" />
+          <mxGeometry x="30" y="80" width="190" height="570" as="geometry" />
         </mxCell>
         <mxCell id="4" value="Client Layer&#xa;(Browser)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1" vertex="1" parent="1">
           <mxGeometry x="40" y="100" width="200" height="40" as="geometry" />
         </mxCell>
         <mxCell id="5" value="Angular 17+&#xa;SPA Application&#xa;&#xa;• Dashboard&#xa;• Customer Module&#xa;• Project Module&#xa;• Order Module&#xa;• Equipment Calendar&#xa;&#xa;Tech: RxJS, Material UI&#xa;HTTP Client with JWT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="160" height="200" as="geometry" />
+          <mxGeometry x="48" y="172" width="160" height="200" as="geometry" />
         </mxCell>
         <mxCell id="6" value="NGINX&#xa;(Reverse Proxy)&#xa;&#xa;• Static files serving&#xa;• API routing /api/*&#xa;• Load balancing (future)&#xa;• SSL termination (prod)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="320" y="200" width="140" height="140" as="geometry" />
+          <mxGeometry x="322" y="201" width="140" height="140" as="geometry" />
         </mxCell>
         <mxCell id="7" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;arcSize=5;" vertex="1" parent="1">
           <mxGeometry x="520" y="80" width="720" height="570" as="geometry" />
@@ -26,7 +26,7 @@
           <mxGeometry x="520" y="80" width="600" height="40" as="geometry" />
         </mxCell>
         <mxCell id="9" value="REST Controllers&#xa;(Presentation Layer)&#xa;&#xa;AuthController&#xa;CustomerController&#xa;ProjectController&#xa;OrderController&#xa;EquipmentController&#xa;AvailabilityController&#xa;&#xa;@RestController&#xa;@RequestMapping&#xa;@Valid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="540" y="140" width="160" height="260" as="geometry" />
+          <mxGeometry x="560" y="140" width="160" height="260" as="geometry" />
         </mxCell>
         <mxCell id="10" value="Service Layer&#xa;(Business Logic)&#xa;&#xa;AuthService&#xa;CustomerService&#xa;ProjectService&#xa;OrderService&#xa;EquipmentService&#xa;AvailabilityService&#xa;OrderValidationService&#xa;PricingService&#xa;&#xa;@Service&#xa;@Transactional&#xa;Optimistic Locking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="774" y="140" width="160" height="260" as="geometry" />
