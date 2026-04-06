@@ -1,2 +1,5 @@
 /.idea/
 /backend/.mvn/
+/frontend/.claude/
+/frontend/.vscode/
+/frontend/node_modules/
