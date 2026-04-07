@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!--
+        Mini-Chronos — Liquibase Master Changelog
+        Naming convention: NNN-<beschreibung>.xml  (NNN = 3-digit sequence)
+        Each changeset has a unique id and author.
+        Rule: ONE logical change per changeSet (easier rollback, clearer history).
+    -->
+
+    <include file="db/changelog/changes/001-create-users-and-roles.xml"/>
+    <include file="db/changelog/changes/002-create-customers.xml"/>
+    <include file="db/changelog/changes/003-create-projects.xml"/>
+    <include file="db/changelog/changes/004-create-equipment.xml"/>
+    <include file="db/changelog/changes/005-create-orders.xml"/>
+    <include file="db/changelog/changes/006-create-availability.xml"/>
+
+</databaseChangeLog>

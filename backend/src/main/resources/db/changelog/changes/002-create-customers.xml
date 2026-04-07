@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!-- ================================================================
+         ChangeSet 002-1 : Table CUSTOMERS
+         Parallel in Chronos: Stammdaten → Kunden
+         In Lang GmbH context: B2B clients (Firmen, Veranstalter)
+         ================================================================ -->
+    <changeSet id="002-1-create-table-customers" author="oleksiy">
+        <comment>Create customers table — Stammdatenverwaltung for B2B clients</comment>
+
+        <createTable tableName="customers">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_customers" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_customers_email"/>
+            </column>
+            <column name="phone" type="VARCHAR(50)"/>
+            <!-- Company data — important for B2B ERP invoicing -->
+            <column name="company_name" type="VARCHAR(255)"/>
+            <column name="tax_id" type="VARCHAR(50)">
+                <constraints uniqueConstraintName="uq_customers_tax_id" unique="true"/>
+            </column>
+            <!-- Billing address -->
+            <column name="street" type="VARCHAR(255)"/>
+            <column name="city" type="VARCHAR(100)"/>
+            <column name="postal_code" type="VARCHAR(20)"/>
+            <column name="country" type="VARCHAR(100)" defaultValue="Deutschland"/>
+            <!-- Soft delete — never hard-delete customers with order history -->
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Audit fields -->
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Full-text search support on name — critical for 10k+ customer lists -->
+        <createIndex tableName="customers" indexName="idx_customers_name">
+            <column name="name"/>
+        </createIndex>
+
+        <!-- Filter active customers fast -->
+        <createIndex tableName="customers" indexName="idx_customers_active">
+            <column name="active"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="customers" indexName="idx_customers_active"/>
+            <dropIndex tableName="customers" indexName="idx_customers_name"/>
+            <dropTable tableName="customers"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 002-2 : Seed sample customers
+         Realistische deutsche Firmennamen für Demo-Zwecke
+         ================================================================ -->
+    <changeSet id="002-2-seed-sample-customers" author="oleksiy">
+        <comment>Insert 3 sample B2B customers for demo/dev environment</comment>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM customers
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="customers">
+            <column name="name" value="Thomas Bremer"/>
+            <column name="email" value="t.bremer@koelnmesse.de"/>
+            <column name="phone" value="+49 221 821-0"/>
+            <column name="company_name" value="Koelnmesse GmbH"/>
+            <column name="city" value="Köln"/>
+            <column name="postal_code" value="50679"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="customers">
+            <column name="name" value="Sandra Vogel"/>
+            <column name="email" value="s.vogel@eventpro-duesseldorf.de"/>
+            <column name="phone" value="+49 211 555-1234"/>
+            <column name="company_name" value="EventPro Düsseldorf GmbH"/>
+            <column name="city" value="Düsseldorf"/>
+            <column name="postal_code" value="40213"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="customers">
+            <column name="name" value="Markus Hartmann"/>
+            <column name="email" value="m.hartmann@medienprodukion-bonn.de"/>
+            <column name="phone" value="+49 228 987-5600"/>
+            <column name="company_name" value="Medienproduktion Bonn AG"/>
+            <column name="city" value="Bonn"/>
+            <column name="postal_code" value="53111"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="customers">
+                <where>email IN
+                    ('t.bremer@koelnmesse.de','s.vogel@eventpro-duesseldorf.de','m.hartmann@medienprodukion-bonn.de')
+                </where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

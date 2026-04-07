@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!-- ================================================================
+         ChangeSet 001-1 : Table USERS
+         Parallel in Chronos: Benutzerverwaltung / Mitarbeiter-Accounts
+         ================================================================ -->
+    <changeSet id="001-1-create-table-users" author="oleksiy">
+        <comment>Create users table for authentication and audit trail</comment>
+
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_users" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_users_username"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_users_email"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="users"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 001-2 : Table USER_ROLES
+         @ElementCollection alternative — explicit join table for clarity.
+         Roles: ROLE_ADMIN, ROLE_SALES, ROLE_LOGISTICS, ROLE_SERVICE
+         ================================================================ -->
+    <changeSet id="001-2-create-table-user-roles" author="oleksiy">
+        <comment>Create user_roles join table — one user can have multiple roles</comment>
+
+        <createTable tableName="user_roles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_user_roles" nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_user_roles_user"
+                             references="users(id)"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Prevent duplicate role assignments for same user -->
+        <addUniqueConstraint
+                tableName="user_roles"
+                columnNames="user_id, role"
+                constraintName="uq_user_roles_user_role"/>
+
+        <!-- Fast lookup: find all roles for given user_id -->
+        <createIndex tableName="user_roles" indexName="idx_user_roles_user_id">
+            <column name="user_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="user_roles" indexName="idx_user_roles_user_id"/>
+            <dropTable tableName="user_roles"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 001-3 : Seed default ADMIN user
+         Password: "admin123" — BCrypt hash (cost 10)
+         IMPORTANT: Change this in production via environment/migration!
+         ================================================================ -->
+    <changeSet id="001-3-seed-admin-user" author="oleksiy">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only insert if admin does not exist yet — safe for re-runs -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM users
+                WHERE username = 'admin'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert default admin user for initial login. Change password before production!</comment>
+
+        <insert tableName="users">
+            <column name="username" value="admin"/>
+            <column name="email" value="admin@mini-chronos.local"/>
+            <!-- BCrypt of "admin123" -->
+            <column name="password_hash" value="$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_roles">
+            <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'admin')"/>
+            <column name="role" value="ROLE_ADMIN"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="user_roles">
+                <where>user_id = (SELECT id FROM users WHERE username = 'admin')</where>
+            </delete>
+            <delete tableName="users">
+                <where>username = 'admin'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 001-4 : Table REFRESH_TOKENS
+         JWT Refresh Token rotation — stored in DB for revocation support.
+         ================================================================ -->
+    <changeSet id="001-4-create-table-refresh-tokens" author="oleksiy">
+        <comment>Store JWT refresh tokens for rotation and logout invalidation</comment>
+
+        <createTable tableName="refresh_tokens">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_refresh_tokens" nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_refresh_tokens_user"
+                             references="users(id)"/>
+            </column>
+            <column name="token" type="VARCHAR(512)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_refresh_token"/>
+            </column>
+            <column name="expires_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revoked" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="refresh_tokens" indexName="idx_refresh_tokens_user_id">
+            <column name="user_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="refresh_tokens" indexName="idx_refresh_tokens_user_id"/>
+            <dropTable tableName="refresh_tokens"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

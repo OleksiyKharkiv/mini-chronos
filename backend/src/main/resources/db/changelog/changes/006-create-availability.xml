@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!-- ================================================================
+         ChangeSet 006-1 : Table AVAILABILITY
+         Parallel in Chronos: Verfügbarkeitsprüfung / Belegungskalender
+
+         DESIGN DECISION (important to explain to Sebastian!):
+         Production Chronos uses PostgreSQL daterange type + GiST index
+         for overlap queries:  WHERE date_range && '[start,end]'::daterange
+
+         This MVP uses two DATE columns (start_date / end_date) instead,
+         because:
+           1. daterange requires native SQL — harder with Spring Data JPA
+           2. For 5 demo items the performance difference is irrelevant
+           3. The overlap query logic is identical:
+              JPQL:  a.startDate < :end AND a.endDate > :start
+              SQL:   start_date < ? AND end_date > ?
+
+         In production with 300.000 Geräte, you'd use:
+           ALTER TABLE availability ADD COLUMN date_range daterange
+               GENERATED ALWAYS AS (daterange(start_date, end_date)) STORED;
+           CREATE INDEX idx_avail_range ON availability USING GIST (date_range);
+         ================================================================ -->
+    <changeSet id="006-1-create-table-availability" author="oleksiy">
+        <comment>
+            Create availability table — Belegungskalender für Mietgeräte.
+            Records which equipment is blocked for which date range.
+            Status RESERVED = soft-block (order DRAFT/CONFIRMED).
+            Status RENTED   = hard-block (order IN_PROGRESS/COMPLETED).
+            Status BLOCKED  = manual block (Wartung, interne Nutzung).
+        </comment>
+
+        <createTable tableName="availability">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_availability" nullable="false"/>
+            </column>
+            <column name="equipment_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_availability_equipment"
+                             references="equipment_units(id)"/>
+            </column>
+            <!-- Nullable: allows manual blocks (Maintenance, internal use) without an order -->
+            <column name="order_item_id" type="BIGINT">
+                <constraints nullable="true"
+                             foreignKeyName="fk_availability_order_item"
+                             references="order_items(id)"/>
+            </column>
+            <!-- Rental period — inclusive start, exclusive end (standard interval convention) -->
+            <column name="start_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <!-- RESERVED: tentative hold (DRAFT order) — can be released
+                 RENTED:   confirmed booking — cannot be overridden
+                 BLOCKED:  manual block (maintenance, internal event) -->
+            <column name="status" type="VARCHAR(20)" defaultValue="RESERVED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- *** CRITICAL INDEX for Verfügbarkeitsprüfung ***
+             Query pattern: "Is equipment X free between date A and date B?"
+             SELECT * FROM availability
+             WHERE equipment_id = ?
+               AND start_date < ?   (end of requested period)
+               AND end_date   > ?   (start of requested period)
+               AND status IN ('RESERVED','RENTED')
+
+             Composite index: equipment_id first (equality filter),
+             then dates (range scan). This is the correct column order
+             for this query pattern. -->
+        <createIndex tableName="availability" indexName="idx_avail_equipment_dates">
+            <column name="equipment_id"/>
+            <column name="start_date"/>
+            <column name="end_date"/>
+        </createIndex>
+
+        <!-- Status filter — quickly find all active reservations -->
+        <createIndex tableName="availability" indexName="idx_avail_status">
+            <column name="status"/>
+        </createIndex>
+
+        <!-- Lookup: which availability records belong to an order item (for cascade delete) -->
+        <createIndex tableName="availability" indexName="idx_avail_order_item_id">
+            <column name="order_item_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="availability" indexName="idx_avail_order_item_id"/>
+            <dropIndex tableName="availability" indexName="idx_avail_status"/>
+            <dropIndex tableName="availability" indexName="idx_avail_equipment_dates"/>
+            <dropTable tableName="availability"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 006-2 : CHECK constraints on availability
+         ================================================================ -->
+    <changeSet id="006-2-availability-check-constraints" author="oleksiy">
+        <comment>Enforce valid status values and date logic for availability blocks</comment>
+
+        <sql>
+            ALTER TABLE availability
+                ADD CONSTRAINT chk_avail_status
+                    CHECK (status IN ('RESERVED', 'RENTED', 'BLOCKED'));
+
+            ALTER TABLE availability
+                ADD CONSTRAINT chk_avail_dates
+                    CHECK (end_date > start_date);
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE availability DROP CONSTRAINT chk_avail_dates;
+                ALTER TABLE availability DROP CONSTRAINT chk_avail_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================
+         ChangeSet 006-3 : DB-level overlap prevention via EXCLUDE constraint
+         ADVANCED: PostgreSQL-specific, uses btree_gist extension.
+         This prevents double-booking at DB level — last line of defense
+         even if application logic has a bug.
+
+         NOTE: Requires btree_gist extension. Commented out for portability.
+         Uncomment if running on PostgreSQL 12+ with btree_gist available.
+         This is a great talking point with Sebastian!
+         ================================================================ -->
+    <changeSet id="006-3-availability-btree-gist-extension" author="oleksiy" dbms="postgresql">
+        <comment>
+            Enable btree_gist PostgreSQL extension — required for EXCLUDE constraint
+            on non-range columns combined with range operators.
+            Production Chronos equivalent: prevents concurrent double-booking at DB level.
+        </comment>
+
+        <sql>CREATE EXTENSION IF NOT EXISTS btree_gist;</sql>
+
+        <rollback>
+            <!-- Do NOT drop extension — other objects may use it -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <!--
+    OPTIONAL — uncomment once btree_gist is confirmed available:
+    This is the ultimate concurrency protection: even if two transactions
+    pass the application-level check simultaneously, the DB will reject
+    one of them with a constraint violation.
+
+    <changeSet id="006-4-availability-exclude-constraint" author="oleksiy" dbms="postgresql">
+        <comment>
+            EXCLUDE constraint prevents overlapping bookings at DB level.
+            Equivalent to: "no two rows can have the same equipment_id
+            AND overlapping date ranges AND active status"
+        </comment>
+        <sql>
+            ALTER TABLE availability
+                ADD CONSTRAINT excl_avail_no_overlap
+                    EXCLUDE USING GIST (
+                        equipment_id WITH =,
+                        daterange(start_date, end_date, '[]') WITH &&
+                    )
+                    WHERE (status IN ('RESERVED', 'RENTED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE availability DROP CONSTRAINT excl_avail_no_overlap;</sql>
+        </rollback>
+    </changeSet>
+    -->
+
+</databaseChangeLog>
