@@ -1,9 +1,6 @@
 package de.alphaloop.chronos.backend.domain;
-// backend/src/main/java/de/alphaloop/demo/chronos/domain/BaseEntity.java
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -24,16 +21,13 @@ import java.util.Objects;
  * - Baeldung: <a href="https://www.baeldung.com/hibernate-inheritance">Hibernate Inheritance</a>
  * - Hibernate Docs: <a href="https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html#entity-inheritance">Hibernate Entity Inheritance</a>
  */
-
-@Getter
-@Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "base_seq")
-    @SequenceGenerator(name = "base_seq", sequenceName = "base_sequence")
+    @SequenceGenerator(name = "base_seq", sequenceName = "default_sequence, allocationSize = 50")
     private Long id;
 
     @CreatedDate
@@ -44,24 +38,18 @@ public abstract class BaseEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // Constructors
-    protected BaseEntity() {
-        // Required by JPA
+    public Long getId() {
+        return id;
     }
 
-    /**
-     * CRITICAL: equals/hashCode based on ID for Hibernate proxies.
-     * <p>
-     * Why not use all fields?
-     * - Hibernate proxies (lazy loading) have only ID populated initially
-     * - Comparing proxy with real entity would fail if based on other fields
-     * <p>
-     * Why check Class instead of instanceof?
-     * - Subclasses must have their own identity
-     * - Prevents false equality between Customer and User (both extend BaseEntity)
-     * <p>
-     * Reference: <a href="https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html#mapping-model-pojo-equalshashcode">Hibernate equals/hashCode</a>
-     */
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -80,3 +68,16 @@ public abstract class BaseEntity {
         return getClass().getSimpleName() + "{id=" + id + "}";
     }
 }
+    /*
+      CRITICAL: equals/hashCode based on ID for Hibernate proxies.
+      <p>
+      Why not use all fields?
+      - Hibernate proxies (lazy loading) have only ID populated initially
+      - Comparing proxy with real entity would fail if based on other fields
+      <p>
+      Why check Class instead of instanceof?
+      - Subclasses must have their own identity
+      - Prevents false equality between Customer and User (both extend BaseEntity)
+      <p>
+      Reference: <a href="https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html#mapping-model-pojo-equalshashcode">Hibernate equals/hashCode</a>
+     */

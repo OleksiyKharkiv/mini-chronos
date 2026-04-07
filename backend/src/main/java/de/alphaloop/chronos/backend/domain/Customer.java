@@ -3,7 +3,6 @@ package de.alphaloop.chronos.backend.domain;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,13 +13,12 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "customers",
         indexes = {
                 @jakarta.persistence.Index(name = "customer_name_idx", columnList = "name"),
                 @jakarta.persistence.Index(name = "customer_email_idx", columnList = "email", unique = true),
-                @jakarta.persistence.Index(name = "customer_active", columnList = "active")
+                @jakarta.persistence.Index(name = "customer_active_idx", columnList = "active")
         })
 public class Customer extends BaseEntity {
 
@@ -43,14 +41,12 @@ public class Customer extends BaseEntity {
     /**
      * @OneToMany with mappedBy = "customer" means:
      * - Customer is the inverse side (doesn't own the foreign key)
-     * - Project table has customer_id column
+     * - Project table has a customer_id column
      * - This is more efficient for updates (no extra table)
-     *
      * FetchType.LAZY - don't load projects when loading customer
      * CRITICAL for performance with large datasets
-     *
      * cascade = {PERSIST, MERGE}:
-     * - PERSIST: saving new customer also saves new projects
+     * - PERSIST: saving a new customer also saves new projects
      * - MERGE: updating customer updates detached projects
      * - NO REMOVE: deleting customer should NOT delete projects (business rule)
      * - NO ALL: explicit control over operations
@@ -60,4 +56,14 @@ public class Customer extends BaseEntity {
             fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Project> projects = new ArrayList<>();
+
+    public void addProject(Project project) {
+        projects.add(project);
+        project.setCustomer(this);
+    }
+
+    public void removeProject(Project project) {
+        projects.remove(project);
+        project.setCustomer(null);
+    }
 }

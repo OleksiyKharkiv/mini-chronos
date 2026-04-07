@@ -26,4 +26,8 @@ public class Project extends BaseEntity {
     private LocalDate startDate;
     private LocalDate endDate;
     private String description;
+
+    public void setCustomer(Customer customer) {
+        customer.addProject(this);
+    }
 }
