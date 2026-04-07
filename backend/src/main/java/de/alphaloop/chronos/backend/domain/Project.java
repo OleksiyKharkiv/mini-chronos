@@ -65,8 +65,4 @@ public class Project extends BaseEntity {
 
     // Constructors, getters, setters, helpers...
 
-    public void addOrder(Order order) {
-        orders.add(order);
-        order.setProject(this);
-    }
 }
