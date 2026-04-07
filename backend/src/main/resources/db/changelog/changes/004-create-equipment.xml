@@ -117,10 +117,10 @@
          Realistic Veranstaltungstechnik items for demo
          ================================================================ -->
     <changeSet id="004-3-seed-sample-equipment" author="oleksiy">
-        <comment>Insert sample rental equipment for dev/demo — typical event tech items</comment>
 
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM equipment_units</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(*)
+                                         FROM equipment_units</sqlCheck>
         </preConditions>
 
         <!-- Projectors -->
@@ -188,7 +188,9 @@
 
         <rollback>
             <delete tableName="equipment_units">
-                <where>sku IN ('PROJ-EPSON-EB-L1755U-001','PROJ-EPSON-EB-L1755U-002','PROJ-EPSON-EB-L1755U-003','AUDIO-QSC-K12-001','LIGHT-ROBE-BMSPOT-001')</where>
+                <where>sku IN
+                    ('PROJ-EPSON-EB-L1755U-001','PROJ-EPSON-EB-L1755U-002','PROJ-EPSON-EB-L1755U-003','AUDIO-QSC-K12-001','LIGHT-ROBE-BMSPOT-001')
+                </where>
             </delete>
         </rollback>
     </changeSet>

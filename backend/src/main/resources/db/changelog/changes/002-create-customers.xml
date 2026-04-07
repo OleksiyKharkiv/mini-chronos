@@ -69,7 +69,6 @@
          Realistische deutsche Firmennamen für Demo-Zwecke
          ================================================================ -->
     <changeSet id="002-2-seed-sample-customers" author="oleksiy">
-        <comment>Insert 3 sample B2B customers for demo/dev environment</comment>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)

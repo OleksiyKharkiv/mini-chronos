@@ -95,14 +95,15 @@
          Linked to seed customers from migration 002
          ================================================================ -->
     <changeSet id="003-3-seed-sample-projects" author="oleksiy">
-        <comment>Insert sample projects for dev/demo — linked to seeded customers</comment>
 
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM projects</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(*)
+                                         FROM projects</sqlCheck>
         </preConditions>
 
         <insert tableName="projects">
-            <column name="customer_id" valueComputed="(SELECT id FROM customers WHERE email = 't.bremer@koelnmesse.de')"/>
+            <column name="customer_id"
+                    valueComputed="(SELECT id FROM customers WHERE email = 't.bremer@koelnmesse.de')"/>
             <column name="name" value="Jahreskonferenz NRW 2026"/>
             <column name="status" value="ACTIVE"/>
             <column name="start_date" valueDate="2026-04-13"/>
@@ -110,7 +111,8 @@
         </insert>
 
         <insert tableName="projects">
-            <column name="customer_id" valueComputed="(SELECT id FROM customers WHERE email = 's.vogel@eventpro-duesseldorf.de')"/>
+            <column name="customer_id"
+                    valueComputed="(SELECT id FROM customers WHERE email = 's.vogel@eventpro-duesseldorf.de')"/>
             <column name="name" value="Produktlaunch Event Mai 2026"/>
             <column name="status" value="ACTIVE"/>
             <column name="start_date" valueDate="2026-05-10"/>
