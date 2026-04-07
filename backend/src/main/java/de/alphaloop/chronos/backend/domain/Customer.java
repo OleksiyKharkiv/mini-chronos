@@ -16,9 +16,9 @@ import java.util.List;
 @Entity
 @Table(name = "customers",
         indexes = {
-                @jakarta.persistence.Index(name = "customer_name_idx", columnList = "name"),
-                @jakarta.persistence.Index(name = "customer_email_idx", columnList = "email", unique = true),
-                @jakarta.persistence.Index(name = "customer_active_idx", columnList = "active")
+                @jakarta.persistence.Index(name = "idx_customer_name", columnList = "name"),
+                @jakarta.persistence.Index(name = "idx_customer_email", columnList = "email", unique = true),
+                @jakarta.persistence.Index(name = "idx_customer_active", columnList = "active")
         })
 public class Customer extends BaseEntity {
 
