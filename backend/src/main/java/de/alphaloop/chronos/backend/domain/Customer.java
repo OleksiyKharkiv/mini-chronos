@@ -40,6 +40,22 @@ public class Customer extends BaseEntity {
     @Column(nullable = false)
     private boolean active;
 
+    /**
+     * @OneToMany with mappedBy = "customer" means:
+     * - Customer is the inverse side (doesn't own the foreign key)
+     * - Project table has customer_id column
+     * - This is more efficient for updates (no extra table)
+     *
+     * FetchType.LAZY - don't load projects when loading customer
+     * CRITICAL for performance with large datasets
+     *
+     * cascade = {PERSIST, MERGE}:
+     * - PERSIST: saving new customer also saves new projects
+     * - MERGE: updating customer updates detached projects
+     * - NO REMOVE: deleting customer should NOT delete projects (business rule)
+     * - NO ALL: explicit control over operations
+     */
+
     @OneToMany(mappedBy = "customer",
             fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE})
