@@ -88,10 +88,10 @@ public class Availability extends BaseEntity{
          *
          * @ManyToOne(optional = true): Hibernate генерирует LEFT JOIN (не INNER).
          * nullable = true: в БД это NULL-able Foreign Key.
-         *
+         * <p>
          * CascadeType: нет cascade — Availability не управляет OrderItem.
          * Жизненный цикл: OrderItem создаётся → сервис создаёт Availability.
-         *                 OrderItem удаляется → сервис удаляет Availability.
+         *                 Orde  rItem удаляется → сервис удаляет Availability.
          */
         @ManyToOne(fetch = FetchType.LAZY, optional = true)
         @JoinColumn(name = "order_item_id", nullable = true)
