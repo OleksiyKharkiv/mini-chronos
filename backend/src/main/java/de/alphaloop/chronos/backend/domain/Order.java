@@ -126,6 +126,7 @@ public class Order extends BaseEntity {
         items.add(item);
         item.setOrder(null);
     }
+
     public void removeItem(OrderItem item) {
         items.remove(item);
         item.setOrder(null);
@@ -136,10 +137,18 @@ public class Order extends BaseEntity {
      * Подтверждение заказа.
      * Проверяем допустимость перехода статуса — нельзя подтвердить уже отменённый заказ.
      */
-    public void confirm(){
+    public void confirm() {
         if (this.status != OrderStatus.DRAFT) {
             throw new IllegalStateException("Only DRAFT orders can be confirmed");
         }
-        this.status = OrderStatus.CONFIRMED;}
+        this.status = OrderStatus.CONFIRMED;
+    }
+
+    public void cancel() {
+        if (this.status == OrderStatus.COMPLETED || this.status == OrderStatus.INVOICED) {
+            throw new IllegalStateException("Cannot cancel order with status " + this.status
+            );
+        }
+        this.status = OrderStatus.CANCELED;
     }
 }
