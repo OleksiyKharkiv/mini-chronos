@@ -151,4 +151,13 @@ public class Order extends BaseEntity {
         }
         this.status = OrderStatus.CANCELED;
     }
+    /**
+     * Пересчёт суммы заказа на основе позиций.
+     * Вызывается сервисом перед сохранением.
+     */
+    public void recalculateTotalAmount(){
+        this.totalAmount = items.stream()
+                .map(OrderItem::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 }
