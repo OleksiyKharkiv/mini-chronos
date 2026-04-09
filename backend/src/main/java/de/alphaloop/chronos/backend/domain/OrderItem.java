@@ -100,6 +100,7 @@ public class OrderItem extends BaseEntity {
     }
 
     public void setOrder(Object o) {
+
     }
     // ── Конструктор для удобного создания ─────────────────────────────────────
 

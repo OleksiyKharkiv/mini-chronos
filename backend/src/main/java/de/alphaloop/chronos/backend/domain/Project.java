@@ -51,9 +51,8 @@ public class Project extends BaseEntity {
 
     /**
      * orphanRemoval = true:
-     * - If project is removed from customer's list, delete from DB
+     * - If a project is removed from the customer's list, delete from DB
      * - But we use REMOVE cascade carefully - only if business allows
-     *
      * Here: NO REMOVE cascade - orders have financial history
      */
     @OneToMany(

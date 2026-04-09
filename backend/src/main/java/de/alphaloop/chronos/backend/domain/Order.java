@@ -13,11 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Order entity - central business entity with complex lifecycle.
+ * Order entity - a central business entity with a complex lifecycle.
  * <p>
  * Key patterns:
  * 1. @Version - optimistic locking for concurrent modifications
- * 2. @OneToMany with orphanRemoval - items are part of order aggregate
+ * 2. @OneToMany with orphanRemoval - items are part of the order aggregate
  * 3. CascadeType.ALL for items - order controls item lifecycle
  * 4. @PrePersist/@PreUpdate - business logic hooks
  */
