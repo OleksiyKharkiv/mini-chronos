@@ -99,11 +99,7 @@ public class OrderItem extends BaseEntity {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
     }
 
-    public void setOrder(Object o) {
-
-    }
     // ── Конструктор для удобного создания ─────────────────────────────────────
-
     /**
      * Фабричный конструктор — создаёт корректно связанную позицию.
      * Обрати внимание: unitPrice копируется из equipment.getDailyRate()
