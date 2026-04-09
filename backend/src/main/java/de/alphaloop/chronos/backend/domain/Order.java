@@ -149,7 +149,7 @@ public class Order extends BaseEntity {
             throw new IllegalStateException("Cannot cancel order with status " + this.status
             );
         }
-        this.status = OrderStatus.CANCELED;
+        this.status = OrderStatus.CANCELLED;
     }
     /**
      * Пересчёт суммы заказа на основе позиций.
