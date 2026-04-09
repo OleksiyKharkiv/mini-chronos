@@ -1,7 +1,6 @@
 package de.alphaloop.chronos.backend.enums;
 /**
  * Project lifecycle states.
- *
  * Design: Enum with business rules for valid transitions.
  * This is cleaner than database check constraints for complex logic.
  */
@@ -26,12 +25,13 @@ public enum ProjectStatus {
      * Business rule: valid state transitions.
      */
     public boolean canTransitionTo(ProjectStatus newStatus) {
-        return switch (this) {
+        boolean b = switch (this) {
             case DRAFT -> newStatus == ACTIVE;
             case ACTIVE -> true;
             case ON_HOLD -> newStatus == ACTIVE || newStatus == CANCELLED;
             case COMPLETED -> false; // Terminal state
             case CANCELLED -> false; // Terminal state
         };
+        return b;
     }
 }
