@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="008-create-order-items-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="order_items"/>
+            </not>
+        </preConditions>
+
+        <!--
+            order_items зависит от двух таблиц:
+              - orders (FK order_id) → создаётся после 007
+              - equipment_units (FK equipment_id) → создаётся после 006
+            Оба условия выполнены — 008 идёт после обеих.
+
+            order_items — это "связующая" таблица в агрегате Order.
+            Она не имеет смысла без Order и без EquipmentUnit.
+        -->
+        <createTable tableName="order_items"
+                     remarks="Line items of an order: which equipment, quantity, price snapshot">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order_items"/>
+            </column>
+
+            <!--
+                created_at: позиция заказа имеет только created_at (нет updated_at в бизнес-логике).
+                НО: BaseEntity содержит оба поля, поэтому Hibernate будет их обновлять.
+                Оставляем оба для совместимости с BaseEntity.
+            -->
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                order_id: FK к orders.
+                nullable=false: позиция ОБЯЗАНА принадлежать заказу.
+                Если order удаляется → cascade в JPA (CascadeType.ALL + orphanRemoval)
+                удалит все его позиции. FK constraint это обеспечит на уровне БД.
+            -->
+            <column name="order_id" type="BIGINT"
+                    remarks="FK to orders.id — owning order of this line item">
+                <constraints nullable="false"
+                             foreignKeyName="fk_order_items_order_id"
+                             references="orders(id)"/>
+            </column>
+
+            <column name="equipment_id" type="BIGINT"
+                    remarks="FK to equipment_units.id — which equipment is in this line item">
+                <constraints nullable="false"
+                             foreignKeyName="fk_order_items_equipment_id"
+                             references="equipment_units(id)"/>
+            </column>
+
+            <!--
+                quantity: сколько единиц оборудования.
+                defaultValueNumeric="1": обычно берут 1 единицу.
+                CHECK constraint добавим ниже: quantity >= 1.
+            -->
+            <column name="quantity" type="INT" defaultValueNumeric="1"
+                    remarks="Number of units ordered, minimum 1">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                unit_price: "PRICE SNAPSHOT" — цена на момент создания заказа.
+
+                ПОЧЕМУ ЭТО КРИТИЧНО:
+                Сценарий без price snapshot:
+                  Январь: заказ создан, equipment.daily_rate = 450€
+                  Февраль: менеджер меняет daily_rate на 500€
+                  Март: бухгалтер смотрит январский заказ → видит 500€ вместо 450€!
+                  → Несоответствие в бухгалтерии, споры с клиентом, налоговые проблемы
+
+                С price snapshot (unit_price в order_items):
+                  Январь: заказ создан, unit_price = 450€ (скопировано из daily_rate)
+                  Февраль: daily_rate изменён на 500€
+                  Март: январский заказ показывает unit_price = 450€ ← неизменно!
+
+                Это стандартный паттерн для ЛЮБОЙ торговой/rental системы.
+                В реальном Chronos это критически важно для финансовой отчётности Lang GmbH.
+            -->
+            <column name="unit_price" type="DECIMAL(10, 2)"
+                    remarks="Price snapshot at order creation time — immutable after creation">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <createIndex tableName="order_items" indexName="idx_order_item_order_id">
+            <column name="order_id"/>
+        </createIndex>
+
+        <createIndex tableName="order_items" indexName="idx_order_item_equipment_id">
+            <column name="equipment_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="order_items"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="008-order-items-check-constraints" author="dev">
+
+        <sql>
+            ALTER TABLE order_items
+                ADD CONSTRAINT chk_order_items_quantity_positive
+                    CHECK (quantity >= 1);
+        </sql>
+
+        <sql>
+            ALTER TABLE order_items
+                ADD CONSTRAINT chk_order_items_unit_price_positive
+                    CHECK (unit_price >= 0);
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE order_items DROP CONSTRAINT IF EXISTS chk_order_items_quantity_positive;
+                ALTER TABLE order_items DROP CONSTRAINT IF EXISTS chk_order_items_unit_price_positive;
+            </sql>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

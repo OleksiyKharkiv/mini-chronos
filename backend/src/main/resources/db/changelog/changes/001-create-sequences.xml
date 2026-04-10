@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        CHANGESET: создание общей последовательности (sequence) для всех сущностей.
+
+        ЧТО ТАКОЕ SEQUENCE В POSTGRESQL?
+        Sequence — это объект базы данных, который генерирует уникальные числа.
+        При каждом вызове nextval('default_sequence') PostgreSQL атомарно
+        возвращает следующее число и увеличивает счётчик.
+
+        ПОЧЕМУ SEQUENCE, А НЕ SERIAL/BIGSERIAL?
+        SERIAL — это сокращение PostgreSQL для "BIGINT + SEQUENCE + DEFAULT".
+        Hibernate предпочитает явный SEQUENCE потому что:
+          1. Может заранее "резервировать" блоки ID (allocationSize=50 в BaseEntity)
+          2. С IDENTITY (SERIAL) Hibernate вынужден делать INSERT, потом читать ID
+             → невозможно batch insert (вставка нескольких строк одним запросом)
+          3. С SEQUENCE Hibernate знает ID ДО INSERT → может накапливать batch
+
+        КАК РАБОТАЕТ allocationSize=50 (из BaseEntity.java):
+          Первый INSERT: Hibernate вызывает nextval() → получает 1
+          Hibernate резервирует в памяти диапазон 1..50
+          INSERTs 1-50: Hibernate раздаёт ID из памяти — НУЛЬ обращений к БД!
+          51-й INSERT: снова вызывает nextval() → получает 51
+          Резервирует 51..100 — и так далее.
+
+          Итого: 1000 INSERT-ов = ~20 вызовов nextval() вместо 1000.
+          При ERP с тысячами заказов это критично для производительности.
+
+        incrementBy="50" ОБЯЗАН совпадать с allocationSize в BaseEntity!
+        Если они расходятся → Hibernate и PostgreSQL считают ID по-разному → дубликаты!
+
+        startValue="1": начинаем с 1, не с 0 (0 часто используется как "null sentinel")
+
+        AUTHOR и ID обязательны для каждого changeset.
+        Комбинация (id + author + filename) должна быть уникальной в проекте.
+        По конвенции: id = порядковый номер файла + описание.
+    -->
+
+    <changeSet id="001-create-default-sequence" author="dev">
+
+        <!--
+            preConditions: выполнять changeset ТОЛЬКО если sequence не существует.
+            onFail="MARK_RAN": если условие не выполнено (sequence уже есть) →
+            пометить как выполненный и продолжить, не выбрасывать ошибку.
+
+            БЕЗ preConditions: повторный запуск миграции на существующей БД
+            попытается создать sequence снова → ошибка "already exists" → приложение не стартует.
+            С preConditions: идемпотентность гарантирована.
+        -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="default_sequence"/>
+            </not>
+        </preConditions>
+
+        <createSequence
+                sequenceName="default_sequence"
+                startValue="1"
+                incrementBy="50"
+                minValue="1"
+                cycle="false"/>
+
+        <!--
+            rollback: что делать если нужно откатить этот changeset.
+            Liquibase может автоматически сгенерировать rollback для простых операций,
+            но для sequence — нужно указать явно.
+
+            Когда rollback используется:
+              liquibase rollbackCount 1  → откатить последний changeset
+              liquibase rollback tagName → откатить до метки
+
+            В production rollback используется редко (опасно для данных),
+            но в разработке — очень полезно.
+        -->
+        <rollback>
+            <dropSequence sequenceName="default_sequence"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

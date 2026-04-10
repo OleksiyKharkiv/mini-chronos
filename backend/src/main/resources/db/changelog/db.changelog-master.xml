@@ -3,20 +3,68 @@
         xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <!--
-        Mini-Chronos — Liquibase Master Changelog
-        Naming convention: NNN-<beschreibung>.xml  (NNN = 3-digit sequence)
-        Each changeset has a unique id and author.
-        Rule: ONE logical change per changeSet (easier rollback, clearer history).
+        MASTER CHANGELOG — точка входа для Liquibase.
+
+        Liquibase читает этот файл при старте Spring Boot и выполняет
+        все подключённые changesets в том порядке, в котором они указаны здесь.
+
+        КАК РАБОТАЕТ LIQUIBASE:
+        При первом запуске Liquibase создаёт две служебные таблицы:
+          - DATABASECHANGELOG: журнал выполненных changesets
+            (id, author, filename, dateexecuted, md5sum, ...)
+          - DATABASECHANGELOGLOCK: блокировка от параллельного запуска
+            (важно при горизонтальном масштабировании — несколько инстансов стартуют одновременно)
+
+        При каждом запуске приложения Liquibase:
+          1. Проверяет DATABASECHANGELOG
+          2. Сравнивает md5sum каждого changeset с тем, что было при предыдущем запуске
+          3. Выполняет только НОВЫЕ changesets
+          4. Если md5sum изменился у уже выполненного changeset → ОШИБКА СТАРТА
+
+        ПРАВИЛО №1 Liquibase: НИКОГДА не редактируй уже выполненный changeset!
+        Если нужно что-то изменить → создай новый changeset.
+
+        ПОРЯДОК ФАЙЛОВ = ПОРЯДОК ВЫПОЛНЕНИЯ.
+        Таблицы с FK должны создаваться после таблиц, на которые они ссылаются:
+          users → roles (roles.user_id → users.id)
+          customers → projects (projects.customer_id → customers.id)
+          projects → orders (orders.project_id → projects.id)
+          orders → order_items (order_items.order_id → orders.id)
+          equipment_units → order_items (order_items.equipment_id → equipment_units.id)
+          order_items → availability (availability.order_item_id → order_items.id)
     -->
 
-    <include file="db/changelog/changes/001-create-users-and-roles.xml"/>
-    <include file="db/changelog/changes/002-create-customers.xml"/>
-    <include file="db/changelog/changes/003-create-projects.xml"/>
-    <include file="db/changelog/changes/004-create-equipment.xml"/>
-    <include file="db/changelog/changes/005-create-orders.xml"/>
-    <include file="db/changelog/changes/006-create-availability.xml"/>
+    <include file="db/changelog/001-create-sequences.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/002-create-users.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/003-create-roles.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/004-create-customers.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/005-create-projects.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/006-create-equipment-units.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/007-create-orders.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/008-create-order-items.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/009-create-availability.xml"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/010-seed-data.xml"
+             relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

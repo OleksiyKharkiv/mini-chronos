@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        CHANGESET: создание таблицы roles.
+
+        roles зависит от users (FK user_id → users.id),
+        поэтому создаётся ПОСЛЕ users (файл 003 после 002).
+
+        Таблица roles реализует паттерн "один пользователь — несколько ролей":
+          users (1) ──── (N) roles
+          Один User может иметь: ADMIN + SALES одновременно.
+          Уникальный constraint (user_id, role_type) запрещает дубликаты:
+          нельзя дать пользователю роль SALES дважды.
+    -->
+
+    <changeSet id="003-create-roles-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="roles"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="roles"
+                     remarks="User roles: ADMIN, SALES, LOGISTICS, SERVICE">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_roles"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                FOREIGN KEY к users:
+                FK обеспечивает ссылочную целостность (referential integrity).
+                Если попытаться создать Role с несуществующим user_id → ошибка.
+                Если попытаться удалить User у которого есть Role → ошибка
+                (CascadeType.ALL в User.roles обработает это на уровне JPA,
+                но FK — последний барьер на уровне БД).
+
+                foreignKeyName: имя constraint. Нужно для rollback и документации.
+                references: tableName(columnName) — синтаксис Liquibase.
+                deleteCascade="false": удаление User должно идти через JPA (orphanRemoval),
+                не через DB cascade. DB cascade обходит Hibernate lifecycle listeners.
+            -->
+            <column name="user_id" type="BIGINT"
+                    remarks="FK to users.id — which user has this role">
+                <constraints nullable="false"
+                             foreignKeyName="fk_roles_user_id"
+                             references="users(id)"/>
+            </column>
+
+            <!--
+                VARCHAR(50) для enum: достаточно для "ADMIN", "SALES", "LOGISTICS", "SERVICE".
+                EnumType.STRING в JPA — хранит имя константы, не порядковый номер.
+
+                ПОЧЕМУ НЕ ORDINAL?
+                ORDINAL хранит: ADMIN=0, SALES=1, LOGISTICS=2, SERVICE=3.
+                Если завтра добавить новый тип МЕЖДУ существующими (BILLING между ADMIN и SALES):
+                  ADMIN=0, BILLING=1, SALES=2, LOGISTICS=3, SERVICE=4
+                Все существующие записи в БД стали некорректными! 1 теперь означает BILLING, не SALES.
+                STRING хранит "SALES" — название не меняется при добавлении новых значений.
+            -->
+            <column name="role_type" type="VARCHAR(50)"
+                    remarks="Role name: ADMIN, SALES, LOGISTICS, SERVICE">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <!-- Индексы для частых запросов -->
+        <createIndex tableName="roles" indexName="idx_role_user_id">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex tableName="roles" indexName="idx_role_type">
+            <column name="role_type"/>
+        </createIndex>
+
+        <!--
+            УНИКАЛЬНЫЙ СОСТАВНОЙ ИНДЕКС: (user_id, role_type).
+            Запрещает одному пользователю иметь одну роль дважды.
+            Пример: user_id=1, role_type='SALES' может быть только один раз.
+
+            Работает на двух уровнях:
+              1. Уровень БД: UNIQUE constraint → ConstraintViolationException при дубликате
+              2. Уровень приложения: existsByUserIdAndRoletype() в RoleRepository
+                 (проверяем до вставки, чтобы дать понятную ошибку)
+        -->
+        <createIndex tableName="roles"
+                     indexName="idx_role_user_role_unique"
+                     unique="true">
+            <column name="user_id"/>
+            <column name="role_type"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="roles"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

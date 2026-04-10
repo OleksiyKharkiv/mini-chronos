@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="007-create-orders-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="orders"/>
+            </not>
+        </preConditions>
+
+        <!--
+            orders зависит от projects (FK project_id).
+            Создаётся ПОСЛЕ projects (007 после 005).
+
+            ВАЖНО: "orders" — зарезервированное слово в некоторых SQL диалектах.
+            В PostgreSQL можно использовать, но в других БД могут быть проблемы.
+            Для максимальной совместимости можно использовать "rental_orders",
+            но в нашем случае оставляем "orders" — Себастиан использует именно это название.
+        -->
+        <createTable tableName="orders"
+                     remarks="Rental orders (Aufträge) — confirmed equipment bookings for a project">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_orders"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="project_id" type="BIGINT"
+                    remarks="FK to projects.id — which project this order belongs to">
+                <constraints nullable="false"
+                             foreignKeyName="fk_orders_project_id"
+                             references="projects(id)"/>
+            </column>
+
+            <!--
+                order_number: бизнес-идентификатор вида "ORD-2026-00000042".
+                Генерируется в @PrePersist в Order.java (не в БД).
+                updatable=false в JPA → в БД нет аналога, но бизнес-правило:
+                номер заказа никогда не меняется после создания.
+                LENGTH=20: "ORD-2026-00000001" = 18 символов, запас есть.
+            -->
+            <column name="order_number" type="VARCHAR(20)"
+                    remarks="Human-readable order identifier: ORD-YYYY-XXXXXXXX, generated on first persist">
+                <constraints nullable="false"
+                             unique="true"
+                             uniqueConstraintName="uq_orders_order_number"/>
+            </column>
+
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT"
+                    remarks="Order lifecycle: DRAFT → CONFIRMED → IN_PROGRESS → COMPLETED → INVOICED">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="start_date" type="DATE"
+                    remarks="Rental period start date — when equipment leaves the warehouse">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="end_date" type="DATE"
+                    remarks="Rental period end date — when equipment returns to the warehouse">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="total_amount" type="DECIMAL(10, 2)"
+                    remarks="Calculated total: sum of all OrderItem line totals, recalculated before save">
+                <constraints nullable="true"/>
+            </column>
+
+            <!--
+                version: поле для Optimistic Locking.
+
+                КАК РАБОТАЕТ @Version / OPTIMISTIC LOCKING:
+                Проблема без него:
+                  Пользователь A читает Order (total=1000€, version=3)
+                  Пользователь B читает Order (total=1000€, version=3)
+                  A изменяет: total=1200€, сохраняет → version становится 4
+                  B изменяет: total=900€, сохраняет → ПЕРЕЗАПИСЫВАЕТ изменения A!
+
+                С @Version:
+                  A читает (version=3), изменяет, сохраняет:
+                    UPDATE orders SET total=1200, version=4 WHERE id=X AND version=3
+                    → 1 строка обновлена ✓ — version стал 4
+                  B читает (version=3), изменяет, пытается сохранить:
+                    UPDATE orders SET total=900, version=4 WHERE id=X AND version=3
+                    → 0 строк обновлено! (version в БД уже 4, не 3)
+                    → Hibernate бросает OptimisticLockException
+                    → Сервис ловит исключение → возвращает 409 Conflict
+                    → Пользователь B видит: "Заказ изменён другим пользователем, обновите страницу"
+
+                DEFAULT 0: Hibernate ожидает что у новой записи version = 0.
+            -->
+            <column name="version" type="BIGINT" defaultValueNumeric="0"
+                    remarks="Optimistic locking version — incremented by Hibernate on every UPDATE">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <createIndex tableName="orders" indexName="idx_order_project_id">
+            <column name="project_id"/>
+        </createIndex>
+
+        <createIndex tableName="orders" indexName="idx_order_status">
+            <column name="status"/>
+        </createIndex>
+
+        <!--
+            Составной индекс на даты: для запросов "заказы в период X-Y".
+            Используется OrderRepository.findActiveOrdersOverlappingPeriod().
+        -->
+        <createIndex tableName="orders" indexName="idx_order_dates">
+            <column name="start_date"/>
+            <column name="end_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="orders"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="007-orders-check-constraints" author="dev">
+
+        <!--
+            CHECK constraint: end_date >= start_date.
+            Нельзя создать заказ где конец раньше начала.
+            JPA не имеет аннотации для проверки между двумя полями одной сущности
+            (нужен @AssertTrue метод или кастомный validator).
+            DB constraint — надёжная защита на уровне данных.
+        -->
+        <sql>
+            ALTER TABLE orders
+                ADD CONSTRAINT chk_orders_dates
+                    CHECK (end_date >= start_date);
+        </sql>
+
+        <!-- total_amount >= 0: заказ не может иметь отрицательную сумму -->
+        <sql>
+            ALTER TABLE orders
+                ADD CONSTRAINT chk_orders_total_amount_positive
+                    CHECK (total_amount IS NULL OR total_amount >= 0);
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_orders_dates;
+                ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_orders_total_amount_positive;
+            </sql>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

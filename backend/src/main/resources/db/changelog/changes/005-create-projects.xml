@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="005-create-projects-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="projects"/>
+            </not>
+        </preConditions>
+
+        <!--
+            projects зависит от customers (FK customer_id).
+            Создаётся ПОСЛЕ customers (005 после 004).
+        -->
+        <createTable tableName="projects"
+                     remarks="Projects (Vorgänge) — a customer's event or rental campaign">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_projects"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="name" type="VARCHAR(255)"
+                    remarks="Project name, e.g. Jahreskonferenz 2026">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                customer_id: FK на customers.id.
+                nullable="false": у каждого проекта ОБЯЗАН быть клиент.
+                Соответствует: @ManyToOne(optional = false) в Project.java.
+
+                Что происходит при попытке удалить клиента у которого есть проекты?
+                  - На уровне JPA: Customer.projects имеет cascade без REMOVE
+                    → JPA не будет удалять проекты автоматически
+                  - На уровне БД: FK constraint заблокирует удаление
+                    → PostgreSQL бросит ошибку "violates foreign key constraint"
+                Это правильное поведение: нельзя удалить клиента с историей.
+                Нужно сначала деактивировать (active = false).
+            -->
+            <column name="customer_id" type="BIGINT"
+                    remarks="FK to customers.id — which customer owns this project">
+                <constraints nullable="false"
+                             foreignKeyName="fk_projects_customer_id"
+                             references="customers(id)"/>
+            </column>
+
+            <!--
+                VARCHAR(20) для enum достаточно: DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELLED.
+                Самое длинное значение: COMPLETED = 9 символов. VARCHAR(20) с запасом.
+                defaultValue="DRAFT": соответствует ProjectStatus status = ProjectStatus.DRAFT в Java.
+            -->
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT"
+                    remarks="Project lifecycle state: DRAFT → ACTIVE → COMPLETED/CANCELLED">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                DATE (не TIMESTAMP): для дат без времени.
+                Соответствует LocalDate в Java (не LocalDateTime).
+                Даты начала/конца проекта — без времени, это бизнес-даты.
+                nullable="true": проект может быть создан без указания дат (DRAFT стадия).
+            -->
+            <column name="start_date" type="DATE"
+                    remarks="Project start date, optional at DRAFT stage">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="end_date" type="DATE"
+                    remarks="Project end date, optional at DRAFT stage">
+                <constraints nullable="true"/>
+            </column>
+
+            <!--
+                TEXT для длинного описания (не VARCHAR с лимитом).
+                В PostgreSQL TEXT и VARCHAR без лимита одинаково эффективны.
+                VARCHAR(2000) добавляет constraint на уровне БД.
+                Соответствует @Column(length = 2000) в Project.java.
+            -->
+            <column name="description" type="VARCHAR(2000)"
+                    remarks="Optional project description">
+                <constraints nullable="true"/>
+            </column>
+
+        </createTable>
+
+        <!--
+            Индекс на customer_id: самый частый запрос — "все проекты клиента".
+            FK в PostgreSQL не создаёт индекс автоматически (в отличие от PK/UNIQUE).
+            Без этого индекса: каждый запрос "проекты клиента X" → full table scan.
+            С индексом: O(log n) lookup.
+        -->
+        <createIndex tableName="projects" indexName="idx_project_customer_id">
+            <column name="customer_id"/>
+        </createIndex>
+
+        <createIndex tableName="projects" indexName="idx_project_status">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="projects"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

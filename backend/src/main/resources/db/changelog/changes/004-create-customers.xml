@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="004-create-customers-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="customers"/>
+            </not>
+        </preConditions>
+
+        <!--
+            customers не зависит ни от одной другой таблицы (нет FK).
+            Это "Stammdaten" — мастер-данные, с которых начинается любая ERP.
+            Порядок в master: после users/roles (независимость позволяет любой порядок,
+            но логически клиенты — первый бизнес-объект).
+        -->
+        <createTable tableName="customers"
+                     remarks="Customers (Kunden) — companies or individuals renting equipment">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_customers"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="name" type="VARCHAR(255)"
+                    remarks="Company or person name, e.g. Lang GmbH">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                UNIQUE constraint на email:
+                В Liquibase uniqueConstraintName задаётся явно.
+                Без имени — PostgreSQL сгенерирует случайное имя вида "customers_email_key".
+                Явное имя нужно для:
+                  1. Читаемых сообщений об ошибках: "violates constraint uq_customers_email"
+                  2. Корректного rollback: Liquibase знает какой constraint удалять
+            -->
+            <column name="email" type="VARCHAR(255)"
+                    remarks="Business email, unique — used for customer identification">
+                <constraints nullable="false"
+                             unique="true"
+                             uniqueConstraintName="uq_customers_email"/>
+            </column>
+
+            <column name="phone_number" type="VARCHAR(50)"
+                    remarks="Contact phone number, optional">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"
+                    remarks="Soft-delete: false = archived customer, kept for order history">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <createIndex tableName="customers" indexName="idx_customer_name">
+            <column name="name"/>
+        </createIndex>
+
+        <!--
+            Индекс на email уже создан как UNIQUE constraint выше.
+            Unique constraint в PostgreSQL автоматически создаёт B-Tree индекс.
+            Отдельный createIndex для email не нужен — это была бы дублирование.
+            Но idx_customer_active — отдельный, без unique:
+        -->
+        <createIndex tableName="customers" indexName="idx_customer_active">
+            <column name="active"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="customers"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

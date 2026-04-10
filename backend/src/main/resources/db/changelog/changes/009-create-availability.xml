@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="009-create-availability-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="availability"/>
+            </not>
+        </preConditions>
+
+        <!--
+            availability зависит от двух таблиц:
+              - equipment_units (FK equipment_id, NOT NULL) → обязательная связь
+              - order_items (FK order_item_id, NULLABLE) → необязательная связь
+
+            Это последняя таблица в цепочке зависимостей:
+            users → roles
+            customers → projects → orders → order_items → availability
+                                             equipment_units ↗
+
+            availability — это "lock table" rental-системы.
+            Каждая запись говорит: "это оборудование занято в этот период по этой причине".
+        -->
+        <createTable tableName="availability"
+                     remarks="Equipment availability records: reservations, maintenance blocks, cancellations">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_availability"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                equipment_id: ОБЯЗАТЕЛЬНАЯ связь (nullable=false).
+                Каждая запись занятости ОБЯЗАНА относиться к конкретному оборудованию.
+                Соответствует: @ManyToOne(optional = false) в Availability.java.
+            -->
+            <column name="equipment_id" type="BIGINT"
+                    remarks="FK to equipment_units.id — which equipment is blocked">
+                <constraints nullable="false"
+                             foreignKeyName="fk_availability_equipment_id"
+                             references="equipment_units(id)"/>
+            </column>
+
+            <!--
+                order_item_id: НЕОБЯЗАТЕЛЬНАЯ связь (nullable=true).
+
+                NULL означает: запись занятости существует БЕЗ заказа.
+                Примеры когда order_item_id = NULL:
+                  - Техобслуживание: проектор в сервисе, нет заказа клиента
+                  - Административная блокировка: менеджер вручную заблокировал
+                  - Повреждение: оборудование сломалось, ждёт ремонта
+
+                nullable=true → LEFT JOIN в запросах (не INNER JOIN).
+                Соответствует: @ManyToOne(optional = true) в Availability.java.
+            -->
+            <column name="order_item_id" type="BIGINT"
+                    remarks="FK to order_items.id — nullable: maintenance/admin blocks have no order">
+                <constraints nullable="true"
+                             foreignKeyName="fk_availability_order_item_id"
+                             references="order_items(id)"/>
+            </column>
+
+            <column name="start_date" type="DATE"
+                    remarks="Start of the blocked period (inclusive)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="end_date" type="DATE"
+                    remarks="End of the blocked period (inclusive)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="status" type="VARCHAR(20)" defaultValue="RESERVED"
+                    remarks="RESERVED=booked for order, MAINTENANCE=in repair, BLOCKED=admin block, CANCELLED=soft-deleted">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <!--
+            СОСТАВНОЙ ИНДЕКС (equipment_id, start_date, end_date):
+            Самый важный индекс в системе — используется в КАЖДОЙ проверке доступности.
+
+            Запрос который он обслуживает (из EquipmentUnitRepository):
+              WHERE equipment_id = :id
+              AND start_date < :requestedEnd
+              AND end_date > :requestedStart
+
+            Как работает этот индекс:
+              1. equipment_id = :id → B-tree сужает до записей конкретного оборудования
+              2. start_date < :requestedEnd → range scan внутри этого поддерева
+              3. end_date фильтруется среди оставшихся строк
+
+            БЕЗ индекса: PostgreSQL делает FULL TABLE SCAN availability.
+            При тысячах записей на каждое оборудование → катастрофа производительности.
+            У Lang GmbH с 300.000 устройствами без этого индекса система не работает.
+
+            Порядок колонок в индексе КРИТИЧЕН:
+            (equipment_id, start_date, end_date) — правильно:
+              запрос по equipment_id → индекс работает
+              запрос по equipment_id + start_date → индекс работает
+              запрос по equipment_id + start_date + end_date → индекс работает
+
+            (start_date, equipment_id, end_date) — неправильно:
+              запрос по equipment_id (без start_date) → индекс НЕ работает!
+        -->
+        <createIndex tableName="availability"
+                     indexName="idx_availability_equipment_dates">
+            <column name="equipment_id"/>
+            <column name="start_date"/>
+            <column name="end_date"/>
+        </createIndex>
+
+        <!--
+            Индекс на order_item_id: для запроса "все записи занятости заказа".
+            Используется при отмене заказа: cancelByOrderId() в AvailabilityRepository.
+            Без индекса — full scan при каждой отмене.
+        -->
+        <createIndex tableName="availability"
+                     indexName="idx_availability_order_item_id">
+            <column name="order_item_id"/>
+        </createIndex>
+
+        <createIndex tableName="availability"
+                     indexName="idx_availability_status">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="availability"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="009-availability-check-constraints" author="dev">
+
+        <sql>
+            ALTER TABLE availability
+                ADD CONSTRAINT chk_availability_dates
+                    CHECK (end_date >= start_date);
+        </sql>
+
+        <!--
+            Бизнес-правило: если status = RESERVED, то order_item_id обязан быть заполнен.
+            MAINTENANCE, BLOCKED, CANCELLED могут быть без order_item_id.
+
+            Это constraint выражает бизнес-логику прямо в схеме БД.
+            Даже если JPA или сервис забудет проверить — БД не примет некорректные данные.
+        -->
+        <sql>
+            ALTER TABLE availability
+                ADD CONSTRAINT chk_availability_reserved_has_order_item
+                    CHECK (
+                        status != 'RESERVED' OR order_item_id IS NOT NULL
+                );
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE availability DROP CONSTRAINT IF EXISTS chk_availability_dates;
+                ALTER TABLE availability DROP CONSTRAINT IF EXISTS chk_availability_reserved_has_order_item;
+            </sql>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

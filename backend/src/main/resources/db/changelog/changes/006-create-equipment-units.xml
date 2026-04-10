@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="006-create-equipment-units-table" author="dev">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="equipment_units"/>
+            </not>
+        </preConditions>
+
+        <!--
+            equipment_units не зависит от других бизнес-таблиц (нет FK).
+            Может создаваться в любом порядке после sequences.
+            Создаётся до order_items и availability, которые ссылаются на неё.
+        -->
+        <createTable tableName="equipment_units"
+                     remarks="Physical equipment units available for rental (Geräte)">
+
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_equipment_units"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                SKU (Stock Keeping Unit) — бизнес-артикул.
+                В отличие от id (технический ключ), SKU — бизнес-идентификатор.
+                Используется в:
+                  - Barcode scanning в складе Lang GmbH
+                  - Поиск: пользователь вводит "PROJ-EPSON-001", а не внутренний ID
+                  - Интеграция с другими системами (бухгалтерия, склад)
+                Уникален: два устройства не могут иметь одинаковый артикул.
+            -->
+            <column name="sku" type="VARCHAR(100)"
+                    remarks="Stock Keeping Unit — unique business identifier, used for barcode scanning">
+                <constraints nullable="false"
+                             unique="true"
+                             uniqueConstraintName="uq_equipment_sku"/>
+            </column>
+
+            <column name="name" type="VARCHAR(255)"
+                    remarks="Human-readable equipment name, e.g. Epson EB-L1755U">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="description" type="VARCHAR(1000)"
+                    remarks="Technical description, optional">
+                <constraints nullable="true"/>
+            </column>
+
+            <!--
+                type: категория оборудования.
+                VARCHAR(50) достаточно для PROJECTOR, LED_WALL, AUDIO и т.д.
+                Соответствует EquipmentType enum с EnumType.STRING.
+            -->
+            <column name="type" type="VARCHAR(50)"
+                    remarks="Equipment category: PROJECTOR, SCREEN, LED_WALL, AUDIO, LIGHTING, etc.">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="status" type="VARCHAR(20)" defaultValue="AVAILABLE"
+                    remarks="Current equipment status: AVAILABLE, RENTED, MAINTENANCE, RETIRED">
+                <constraints nullable="false"/>
+            </column>
+
+            <!--
+                DECIMAL(10, 2) для денег:
+                precision=10: всего 10 значимых цифр
+                scale=2: 2 знака после запятой
+                Максимум: 99 999 999.99 €
+                Соответствует BigDecimal в Java.
+                nullable=true: цена может быть не указана (оборудование ещё не оценено).
+            -->
+            <column name="daily_rate" type="DECIMAL(10, 2)"
+                    remarks="Base daily rental rate in EUR, used as price snapshot source for OrderItem">
+                <constraints nullable="true"/>
+            </column>
+
+        </createTable>
+
+        <!--
+            СОСТАВНОЙ ИНДЕКС (type, status):
+            Самый частый запрос в системе: "все доступные проекторы".
+            WHERE type = 'PROJECTOR' AND status = 'AVAILABLE'
+
+            PostgreSQL использует составной индекс если запрос фильтрует
+            по ПЕРВОЙ колонке индекса (type) — с или без второй.
+            Порядок колонок важен!
+
+            type + status (правильно): запрос только по type → индекс работает
+            status + type (неправильно): запрос только по type → индекс НЕ работает
+
+            Это называется "leftmost prefix rule" — правило левого префикса.
+        -->
+        <createIndex tableName="equipment_units"
+                     indexName="idx_equipment_type_status">
+            <column name="type"/>
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="equipment_units"/>
+        </rollback>
+
+    </changeSet>
+
+    <!--
+        CHECK CONSTRAINTS: отдельным changeset.
+        Разделяем создание таблицы и добавление constraints —
+        если constraint нужно изменить, не трогаем основной changeset.
+
+        ПРАВИЛО: один changeset = одно логическое изменение.
+    -->
+    <changeSet id="006-equipment-check-constraints" author="dev">
+
+        <!--
+            CHECK constraint: daily_rate >= 0.
+            Защита на уровне БД: нельзя сохранить отрицательную цену.
+            JPA-валидация (@Min) работает только в Java — при прямом SQL INSERT её нет.
+            DB constraint — последний барьер.
+        -->
+        <sql>
+            ALTER TABLE equipment_units
+                ADD CONSTRAINT chk_equipment_daily_rate_positive
+                    CHECK (daily_rate IS NULL OR daily_rate >= 0);
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE equipment_units
+                DROP CONSTRAINT IF EXISTS chk_equipment_daily_rate_positive;
+            </sql>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

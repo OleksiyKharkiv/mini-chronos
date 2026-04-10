@@ -1,58 +1,127 @@
+# application.yml — конфигурация Spring Boot для mini-chronos
+#
+# Этот файл читается Spring Boot при старте.
+# Три профиля: базовый (этот файл) + dev (application-dev.yml) + prod (application-prod.yml)
+# Spring Boot автоматически мержит: базовый + активный профиль.
+
 spring:
   application:
     name: mini-chronos
+
+  # ── DATABASE ─────────────────────────────────────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/mydatabase
-    username: user
-    password: secret
+    url: jdbc:postgresql://localhost:5432/mini_chronos
+    username: ${DB_USERNAME:postgres}       # берёт из env-переменной, дефолт: postgres
+    password: ${DB_PASSWORD:postgres}       # НИКОГДА не хардкодь реальные пароли!
     driver-class-name: org.postgresql.Driver
+
+    # HikariCP — connection pool (встроен в Spring Boot, лучший по производительности)
     hikari:
-      maximum-pool-size: 10
+      # Максимум одновременных подключений к БД.
+      # Для разработки: 5 достаточно.
+      # Для production с 200 пользователями: 20-50 (зависит от нагрузки).
+      # PostgreSQL по умолчанию принимает max 100 подключений.
+      maximum-pool-size: 5
       minimum-idle: 2
-      connection-timeout: 20000
-      idle-timeout: 300000
-      pool-name: MiniChronosHikariPool
+      # Время ожидания свободного соединения из pool (30 секунд)
+      connection-timeout: 30000
+      pool-name: MiniChronosPool
+
+  # ── JPA / HIBERNATE ──────────────────────────────────────────────────────
   jpa:
     hibernate:
+      # ddl-auto: КРИТИЧЕСКИ ВАЖНАЯ настройка!
+      #
+      # validate: Hibernate проверяет что схема БД соответствует entities,
+      #           но НЕ изменяет её. Если расхождение → ошибка при старте.
+      #           ПРАВИЛЬНЫЙ выбор когда используется Liquibase:
+      #           Liquibase управляет схемой, Hibernate только проверяет.
+      #
+      # create-drop: удаляет и пересоздаёт схему при каждом старте — только для тестов!
+      # update: Hibernate пытается мигрировать схему — НИКОГДА в production!
+      #         Не умеет удалять колонки, может потерять данные.
+      # none: вообще не трогает схему.
+      #
+      # С Liquibase: всегда используй validate или none.
       ddl-auto: validate
-    show-sql: true
+
+    show-sql: true   # Логировать SQL в консоль (dev only, в prod = false)
+
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Форматировать SQL в логах — читаемо для отладки
         format_sql: true
-        default_batch_fetch_size: 20
+
+        # JDBC batch size: Hibernate накапливает INSERT/UPDATE и отправляет батчами.
+        # Синергия с allocationSize=50 в BaseEntity:
+        #   Sequence резервирует 50 ID → Hibernate может сделать 50 INSERT одним batch.
+        # Значение = allocationSize из @SequenceGenerator.
+        jdbc:
+          batch_size: 50
+
+        # order_inserts/updates: группировать операции одного типа вместе.
+        # Без этого: INSERT user, INSERT order, INSERT user, INSERT order...
+        # С этим:   INSERT user, INSERT user, INSERT order, INSERT order...
+        # Второй вариант лучше для batch processing.
         order_inserts: true
         order_updates: true
-        jdbc:
-          batch_size: 25
-  liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.xml
-    enabled: true
-    default-schema: public
 
+        # default_schema: если используешь non-public schema в PostgreSQL.
+        # Для MVP оставляем public (по умолчанию).
+        # default_schema: public
+
+    # open-in-view: ОТКЛЮЧИТЬ ОБЯЗАТЕЛЬНО!
+    #
+    # Что это: Spring MVC по умолчанию держит Hibernate Session открытой
+    # на протяжении всего HTTP запроса (от получения до отправки ответа).
+    # Это позволяет LAZY загрузку работать даже в контроллере/шаблоне.
+    #
+    # Почему это плохо:
+    #   1. Соединение с БД занято на всё время рендеринга ответа (медленно!)
+    #   2. Скрывает N+1 проблемы: они "работают", но невидимо тратят ресурсы
+    #   3. Бизнес-логика и DB-логика смешиваются — нарушение слоёв
+    #
+    # С open-in-view=false: LazyInitializationException при доступе к lazy
+    # коллекции вне транзакции — это ХОРОШО! Явно указывает где нужен @EntityGraph.
+    open-in-view: false
+
+  # ── LIQUIBASE ─────────────────────────────────────────────────────────────
+  liquibase:
+    # enabled: включить Liquibase (true по умолчанию, но явно лучше)
+    enabled: true
+
+    # change-log: путь к master changelog относительно classpath (src/main/resources)
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+    # contexts: какие changesets выполнять.
+    # "dev" → выполняются changesets с context="dev,test" И без context (без context = всегда)
+    # В prod application.yml: contexts: prod (seed data с context="dev,test" не выполнится)
+    contexts: dev
+
+    # default-schema: схема PostgreSQL (public по умолчанию)
+    # default-schema: public
+
+    # drop-first: НИКОГДА не ставить true в production! Удаляет всю схему перед миграцией.
+    # drop-first: false  # default
+
+  # ── JPA AUDITING ──────────────────────────────────────────────────────────
+  # @EnableJpaAuditing должна быть на @Configuration классе!
+  # Без неё @CreatedDate и @LastModifiedDate в BaseEntity не заполняются → null → ошибка.
+  # Создай класс: @Configuration @EnableJpaAuditing public class JpaConfig {}
+
+# ── SERVER ──────────────────────────────────────────────────────────────────
 server:
   port: 8080
 
+# ── LOGGING ─────────────────────────────────────────────────────────────────
 logging:
   level:
+    # SQL от Hibernate (дублирует show-sql, но с параметрами!)
     org.hibernate.SQL: DEBUG
+    # Значения параметров в SQL запросах (?1, ?2 → реальные значения)
+    # ВНИМАНИЕ: может логировать sensitive data (пароли) — только dev!
     org.hibernate.orm.jdbc.bind: TRACE
+    # Liquibase: показывать выполняемые changesets
+    liquibase: INFO
+    # Наш пакет: всё на DEBUG в разработке
     de.alphaloop.chronos: DEBUG
-  pattern:
-    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,metrics
-  endpoint:
-    health:
-      show-details: always
-
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operations-sorter: method
