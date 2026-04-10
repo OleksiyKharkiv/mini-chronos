@@ -124,7 +124,7 @@ public class Order extends BaseEntity {
     // ── Helper методы для управления коллекцией items ─────────────────────────
     public void addItem(OrderItem item) {
         items.add(item);
-        item.setOrder(null);
+        item.setOrder(this);
     }
 
     public void removeItem(OrderItem item) {

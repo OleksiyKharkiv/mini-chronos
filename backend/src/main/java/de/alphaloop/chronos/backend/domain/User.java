@@ -42,7 +42,7 @@ public class User extends BaseEntity {
      */
     @NotBlank
     @Column(name = "password_hash", nullable = false)
-    private String password_hash;
+    private String passwordHash;
 
     // ----- Personal Data ----------------------------------
     @NotBlank
@@ -91,7 +91,7 @@ public class User extends BaseEntity {
         role.setUser(null);
     }
 
-    public String GEtDisplayName() {
+    public String getDisplayName() {
         if (firstName != null && !firstName.isEmpty()) {
             return firstName + " " + lastName;
         }

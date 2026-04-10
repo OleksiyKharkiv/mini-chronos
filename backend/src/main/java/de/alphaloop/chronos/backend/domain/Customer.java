@@ -1,8 +1,10 @@
 package de.alphaloop.chronos.backend.domain;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jdk.jfr.Name;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,8 +31,10 @@ public class Customer extends BaseEntity {
 
     @NotBlank
     @Size(max = 255)
+    @Email
     @Column(nullable = false, unique = true)
     private String email;
+
     @Size(max = 50)
     @Column(name = "phone_number")
     private String phone;

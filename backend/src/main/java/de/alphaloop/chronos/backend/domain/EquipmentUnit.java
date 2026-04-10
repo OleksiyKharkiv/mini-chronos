@@ -67,6 +67,11 @@ public class EquipmentUnit extends BaseEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String sku;
 
+    @NotBlank
+    @Size(max = 255)
+    @Column(nullable = false)
+    private String name;
+
     @Size(max = 1000)
     @Column(length = 1000)
     private String description;

@@ -25,13 +25,12 @@ public enum ProjectStatus {
      * Business rule: valid state transitions.
      */
     public boolean canTransitionTo(ProjectStatus newStatus) {
-        boolean b = switch (this) {
+        return switch (this) {
             case DRAFT -> newStatus == ACTIVE;
             case ACTIVE -> true;
             case ON_HOLD -> newStatus == ACTIVE || newStatus == CANCELLED;
             case COMPLETED -> false; // Terminal state
             case CANCELLED -> false; // Terminal state
         };
-        return b;
     }
 }
