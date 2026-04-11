@@ -1,0 +1,123 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — локальный стек для разработки mini-chronos
+#
+# ЗАПУСК:
+#   cp .env.example .env        # скопируй и заполни переменные
+#   docker-compose up -d        # запустить в фоне
+#   docker-compose logs -f app  # смотреть логи приложения
+#   docker-compose down         # остановить всё
+#   docker-compose down -v      # остановить И удалить volumes (сброс БД)
+#
+# ЧТО ЗАПУСКАЕТСЯ:
+#   postgres  — PostgreSQL 16, порт 5432
+#   app       — Spring Boot приложение, порт 8080
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mini-chronos-postgres
+
+    environment:
+      # Значения берутся из .env файла (см. .env.example).
+      # Синтаксис ${VAR:-default}: если VAR не задана, используется default.
+      POSTGRES_DB:       ${POSTGRES_DB:-mini_chronos}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+      # Locale для PostgreSQL — важно для сортировки немецких символов (ä, ö, ü).
+      # LC_COLLATE=de_DE.utf8: немецкая сортировка (ä после a, не в конце алфавита).
+      # Для Lang GmbH в Линларе это принципиально.
+      POSTGRES_INITDB_ARGS: "--locale=de_DE.utf8 --encoding=UTF8"
+
+    ports:
+      # host:container — 5432:5432
+      # Можно подключиться из IDE (DataGrip, IntelliJ): localhost:5432
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      # Именованный volume: данные БД сохраняются между перезапусками контейнера.
+      # Без volume: каждый docker-compose down уничтожает все данные.
+      # docker-compose down -v: явно удаляет volume (нужен чистый сброс).
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      # Проверяет готовность PostgreSQL принимать подключения.
+      # pg_isready: утилита PostgreSQL, возвращает 0 если сервер готов.
+      # -U: имя пользователя, -d: имя базы данных.
+      # Приложение (app) ждёт healthy перед стартом (depends_on condition).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mini_chronos}"]
+      interval: 5s   # проверять каждые 5 секунд
+      timeout: 5s    # считать провалом если нет ответа за 5 секунд
+      retries: 10    # после 10 неудач — статус "unhealthy"
+
+    restart: unless-stopped
+    networks:
+      - chronos-net
+
+  # ── Spring Boot Application ───────────────────────────────────────────────
+  app:
+    build:
+      context: .          # корень проекта (где лежит Dockerfile)
+      dockerfile: Dockerfile
+    container_name: mini-chronos-app
+
+    environment:
+      # Spring profile: активирует application-dev.yml (дополнительно к application.yml)
+      SPRING_PROFILES_ACTIVE: dev
+
+      # Подключение к БД.
+      # postgres — имя сервиса выше: Docker DNS резолвит его в IP контейнера.
+      # Снаружи контейнера: jdbc:postgresql://localhost:5432/...
+      # Внутри Docker сети: jdbc:postgresql://postgres:5432/...
+      DB_URL:      jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mini_chronos}
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+      # JVM heap ограничение — явно задаём для dev окружения.
+      # В docker-compose это передаётся как env var, JVM читает через
+      # -XX:MaxRAMPercentage=75 (задано в Dockerfile ENTRYPOINT).
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+    depends_on:
+      postgres:
+        # НЕ просто depends_on: postgres (это ждёт только старта контейнера).
+        # condition: service_healthy: ждёт пока postgres healthcheck вернёт "healthy".
+        # Без этого: app стартует, пытается подключиться к БД, БД ещё не готова → ОШИБКА.
+        # С этим: app стартует только после того как PostgreSQL принимает подключения.
+        condition: service_healthy
+
+    restart: unless-stopped
+    networks:
+      - chronos-net
+
+    # Логи: ограничиваем размер чтобы не забить диск при долгой разработке.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  # Именованный volume управляется Docker.
+  # Физически хранится в: /var/lib/docker/volumes/mini-chronos_postgres_data/
+  # Переживает docker-compose down.
+  # Удаляется только через: docker-compose down -v или docker volume rm ...
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  chronos-net:
+    # bridge: стандартная сеть для одной машины.
+    # Контейнеры в одной bridge-сети видят друг друга по имени сервиса (DNS).
+    # postgres → резолвится в IP контейнера postgres.
+    # Снаружи сети: только через проброшенные порты (ports: "5432:5432").
+    driver: bridge
