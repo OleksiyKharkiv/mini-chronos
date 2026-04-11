@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Rich customer response for the detail page.
  * Includes the projects list — loaded via EntityGraph in CustomerService.
- *
+ * <p>
  * WHY List<ProjectResponse> and not List<Project>?
  * Returning List<Project> would serialize the entire entity graph:
  * projects → orders → orderItems → equipment → availabilityRecords → ...

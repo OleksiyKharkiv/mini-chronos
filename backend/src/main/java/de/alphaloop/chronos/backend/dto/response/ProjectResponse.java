@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 /**
  * Lean project response.
  * Note: customerName is a DENORMALIZED field — it comes from project.customer.name,
- * not from project itself. The mapper handles this traversal.
- *
+ * not from the project itself. The mapper handles this traversal.
+ * <p>
  * WHY include customerName here instead of a nested CustomerResponse?
  * For a project list, you only need the customer's name (for display).
  * A full CustomerResponse would include email, phone, createdAt — wasted bytes.

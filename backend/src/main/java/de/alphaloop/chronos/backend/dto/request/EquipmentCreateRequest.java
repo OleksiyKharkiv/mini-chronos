@@ -22,7 +22,7 @@ public record EquipmentCreateRequest(
         EquipmentType type,
 
         // Daily rate is optional at creation (equipment catalog entry before pricing).
-        @DecimalMin(value = "0.0", inclusive = true, message = "Daily rate cannot be negative")
+        @DecimalMin(value = "0.0", message = "Daily rate cannot be negative")
         @Digits(integer = 8, fraction = 2, message = "Daily rate format: max 8 digits, 2 decimal places")
         BigDecimal dailyRate
 

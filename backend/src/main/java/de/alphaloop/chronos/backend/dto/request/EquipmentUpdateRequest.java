@@ -21,7 +21,7 @@ public record EquipmentUpdateRequest(
         @Size(max = 1000)
         String description,
 
-        @DecimalMin(value = "0.0", inclusive = true)
+        @DecimalMin(value = "0.0")
         @Digits(integer = 8, fraction = 2)
         BigDecimal dailyRate
 

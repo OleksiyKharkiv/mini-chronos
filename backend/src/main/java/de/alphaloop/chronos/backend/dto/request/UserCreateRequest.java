@@ -12,7 +12,7 @@ import jakarta.validation.constraints.*;
  * UserService immediately hashes it with BCrypt and discards the plaintext.
  * The password field is NEVER logged, NEVER stored, NEVER returned in a response.
  *
- * @Size(min = 8): enforce minimum password length at the API level.
+ * @Size(min = 8): enforce the minimum password length at the API level.
  * In production, add @Pattern for complexity rules (uppercase, digit, special char).
  */
 public record UserCreateRequest(

@@ -10,14 +10,14 @@ import java.util.List;
 /**
  * Rich order response for the order detail page.
  * Includes all line items with their equipment details.
- *
+ * <p>
  * version: included so the client can send it back in update requests.
  * This is how optimistic locking works in REST APIs:
  *   GET /api/orders/42 → response includes "version": 3
  *   PUT /api/orders/42 with body {"version": 3, ...}
- *   → server checks that current DB version == 3 before updating
- *   → if version != 3 → 409 Conflict (someone else changed it)
- *
+ *   → server checks that the current DB version == 3 before updating
+ *   → if the version != 3 → 409 Conflict (someone else changed it)
+ * <p>
  * The client MUST echo back the version it received.
  * Without this, the client cannot participate in the optimistic locking protocol.
  */

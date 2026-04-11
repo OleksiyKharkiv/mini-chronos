@@ -15,7 +15,7 @@ public record ProjectCreateRequest(
         @Size(max = 255)
         String name,
 
-        // Dates are optional at creation (project starts as DRAFT).
+        // Dates are optional at creation (the project starts as DRAFT).
         // @FutureOrPresent: start date cannot be in the past.
         // Commented out for MVP — would block loading historical seed data in tests.
         // @FutureOrPresent(message = "Start date cannot be in the past")

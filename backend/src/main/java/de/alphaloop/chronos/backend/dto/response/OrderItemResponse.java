@@ -4,11 +4,11 @@ import java.math.BigDecimal;
 
 /**
  * Order line item response.
- *
+ * <p>
  * lineTotal: a COMPUTED field — quantity × unitPrice.
  * Not stored in DB, calculated in OrderItem.getLineTotal().
  * The mapper calls this method and puts the result in the DTO.
- *
+ * <p>
  * We include both equipmentId (for navigation) and equipmentSku + equipmentName
  * (for display) — avoids a second request from the client to look up equipment.
  */

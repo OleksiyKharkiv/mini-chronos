@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Rich project response for the detail page.
- * Includes orders list — loaded via EntityGraph.
+ * Includes the order list — loaded via EntityGraph.
  */
 public record ProjectDetailResponse(
         Long id,

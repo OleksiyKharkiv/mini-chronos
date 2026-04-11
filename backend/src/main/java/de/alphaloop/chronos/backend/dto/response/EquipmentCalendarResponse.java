@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Equipment response for the calendar view.
  * Includes availability slots for the requested month.
- *
+ * <p>
  * Each slot represents a blocked period: RESERVED, MAINTENANCE, or BLOCKED.
  * The frontend uses this to render the equipment availability calendar.
  */

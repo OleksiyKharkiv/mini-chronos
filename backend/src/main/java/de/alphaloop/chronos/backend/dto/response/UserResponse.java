@@ -5,12 +5,12 @@ import java.util.List;
 
 /**
  * User response.
- *
+ * <p>
  * CRITICAL: NO password_hash field here.
  * The password hash must NEVER leave the server.
  * Even a BCrypt hash can be subject to offline brute-force attacks.
  * Strict rule: password-related data is write-only.
- *
+ * <p>
  * roles: List<String> not List<RoleType>.
  * WHY String? The role names go to the frontend as plain strings ("ADMIN", "SALES").
  * The frontend doesn't need the Java enum — just the string value.

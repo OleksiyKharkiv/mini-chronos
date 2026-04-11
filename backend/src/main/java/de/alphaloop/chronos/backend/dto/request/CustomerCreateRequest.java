@@ -17,7 +17,7 @@ import jakarta.validation.constraints.Size;
 //
 // One DTO for both directions seems tempting (less code), but leads to problems:
 //
-//   Request needs:  @NotBlank @Email validation annotations
+//   Request needs: @NotBlank @Email validation annotations
 //   Response needs: id, createdAt, updatedAt (fields that come FROM the DB)
 //
 //   If you mix them: validation annotations on id (never makes sense),

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * Lean order response for lists (project detail page order table, order list).
- *
+ * <p>
  * projectName: denormalized from order.project.name.
  * customerName: denormalized from order.project.customer.name — two levels deep.
  * MapStruct handles this with nested @Mapping expressions.
