@@ -6,14 +6,14 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for updating an existing customer.
- *
+ * <p>
  * Identical fields to create — but a SEPARATE record.
  * WHY not reuse CustomerCreateRequest?
- *
+ * <p>
  * In the future, update might allow partial updates (PATCH semantics)
  * where some fields are optional. Or update might disallow email changes.
  * Having separate records means you change one without affecting the other.
- *
+ * <p>
  * Also, semantics differ: "create" implies all required fields present,
  * "update" might mean "only send what changed". Separate types, separate intent.
  */
@@ -31,4 +31,5 @@ public record CustomerUpdateRequest(
         @Size(max = 50)
         String phone
 
-) {}
+) {
+}

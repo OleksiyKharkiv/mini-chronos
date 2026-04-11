@@ -12,14 +12,14 @@ import java.util.List;
 
 /**
  * Request for creating a draft order.
- *
+ * <p>
  * Contains a nested list of items — this is a "compound request".
  * Jackson deserializes the JSON array into List<OrderItemRequest> automatically.
  *
  * @Valid on the list: tells Jakarta Validation to validate EACH element
  * of the list, not just check if the list is non-null.
  * Without @Valid: quantity=-5 would pass validation silently!
- *
+ * <p>
  * JSON example:
  * {
  *   "projectId": 300,
@@ -50,7 +50,7 @@ public record OrderCreateRequest(
 ) {
     /**
      * Nested record for a single order line item.
-     *
+     * <p>
      * Inner record inside the outer record — valid Java syntax.
      * Keeps related types together: OrderCreateRequest always comes with its items.
      */

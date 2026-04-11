@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Request for explicit status transition.
  * Sent as: PATCH /api/projects/{id}/status  with body: {"status": "ACTIVE"}
- *
+ * <p>
  * WHY a dedicated DTO for status change?
  * Status transitions have business rules (canTransitionTo()).
  * Keeping it separate from ProjectUpdateRequest makes the API contract clear:
@@ -17,4 +17,5 @@ public record ProjectStatusRequest(
         @NotNull(message = "Target status is required")
         ProjectStatus status
 
-) {}
+) {
+}

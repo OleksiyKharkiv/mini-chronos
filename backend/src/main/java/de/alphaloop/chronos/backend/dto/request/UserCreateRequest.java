@@ -6,7 +6,7 @@ import jakarta.validation.constraints.*;
 
 /**
  * Request for creating a new system user.
- *
+ * <p>
  * SECURITY NOTE on password:
  * The plain text password arrives here over HTTPS (encrypted in transit).
  * UserService immediately hashes it with BCrypt and discards the plaintext.
@@ -43,4 +43,5 @@ public record UserCreateRequest(
         @NotNull(message = "Initial role is required")
         RoleType initialRole
 
-) {}
+) {
+}

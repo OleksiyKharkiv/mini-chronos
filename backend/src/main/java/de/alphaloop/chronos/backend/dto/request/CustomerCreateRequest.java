@@ -73,4 +73,5 @@ public record CustomerCreateRequest(
         @Size(max = 50, message = "Phone number must not exceed 50 characters")
         String phone  // nullable — phone is optional in the domain model
 
-) {}
+) {
+}

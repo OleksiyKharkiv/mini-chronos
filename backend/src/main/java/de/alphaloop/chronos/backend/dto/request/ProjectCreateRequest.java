@@ -26,4 +26,5 @@ public record ProjectCreateRequest(
         @Size(max = 2000, message = "Description must not exceed 2000 characters")
         String description
 
-) {}
+) {
+}

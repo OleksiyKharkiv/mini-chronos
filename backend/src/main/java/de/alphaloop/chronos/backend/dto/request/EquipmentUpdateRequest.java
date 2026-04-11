@@ -25,4 +25,5 @@ public record EquipmentUpdateRequest(
         @Digits(integer = 8, fraction = 2)
         BigDecimal dailyRate
 
-) {}
+) {
+}

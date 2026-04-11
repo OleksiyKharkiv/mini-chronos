@@ -26,4 +26,5 @@ public record EquipmentCreateRequest(
         @Digits(integer = 8, fraction = 2, message = "Daily rate format: max 8 digits, 2 decimal places")
         BigDecimal dailyRate
 
-) {}
+) {
+}
