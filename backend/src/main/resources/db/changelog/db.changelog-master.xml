@@ -37,34 +37,34 @@
           order_items → availability (availability.order_item_id → order_items.id)
     -->
 
-    <include file="db/changelog/001-create-sequences.xml"
+    <include file="db/changelog/changes/001-create-sequences.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/002-create-users.xml"
+    <include file="db/changelog/changes/002-create-users.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/003-create-roles.xml"
+    <include file="db/changelog/changes/003-create-roles.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/004-create-customers.xml"
+    <include file="db/changelog/changes/004-create-customers.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/005-create-projects.xml"
+    <include file="db/changelog/changes/005-create-projects.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/006-create-equipment-units.xml"
+    <include file="db/changelog/changes/006-create-equipment-units.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/007-create-orders.xml"
+    <include file="db/changelog/changes/007-create-orders.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/008-create-order-items.xml"
+    <include file="db/changelog/changes/008-create-order-items.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/009-create-availability.xml"
+    <include file="db/changelog/changes/009-create-availability.xml"
              relativeToChangelogFile="false"/>
 
-    <include file="db/changelog/010-seed-data.xml"
+    <include file="db/changelog/changes/010-seed-data.xml"
              relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        SEED DATA — тестовые данные для разработки и демо.
+
+        ВАЖНО: этот changeset должен выполняться ТОЛЬКО в dev/test окружении!
+        В production — реальные данные, не тестовые.
+
+        КАК ОГРАНИЧИТЬ ВЫПОЛНЕНИЕ ОКРУЖЕНИЕМ:
+        Два способа:
+
+        Способ 1 — contexts (используем здесь):
+          В changeset: context="dev,test"
+          В application.yml: liquibase.contexts=dev
+          В production application.yml: liquibase.contexts=prod (или пусто)
+          → seed changeset выполняется только если context совпадает
+
+        Способ 2 — отдельный файл подключается только в dev профиле:
+          В master changelog убрать include для 010-seed-data.xml,
+          Создать отдельный master-dev.xml который включает и seed,
+          В application-dev.yml: liquibase.change-log=db/changelog/master-dev.xml
+
+        Используем Способ 1 — проще для демо Себастиану.
+
+        ДАННЫЕ СООТВЕТСТВУЮТ USER STORY:
+        "Maria Müller из Lang GmbH бронирует 3 проектора на конференцию"
+        Именно это мы описывали в архитектурном плане — теперь эти данные реальны.
+    -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- USERS                                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-seed-users" author="dev" context="dev,test">
+
+        <!--
+            Пароли: BCrypt hash строки "password123".
+            В реальном проекте seed пароли должны быть сложнее,
+            но для dev/demo — достаточно.
+
+            Как сгенерировать BCrypt hash:
+              Java: new BCryptPasswordEncoder().encode("password123")
+              Online: bcrypt-generator.com
+              CLI: htpasswd -bnBC 10 "" password123 | tr -d ':\n'
+
+            Этот hash — "$2a$10$..." — всегда 60 символов.
+        -->
+        <insert tableName="users">
+            <column name="id" valueNumeric="1"/>
+            <column name="username" value="admin"/>
+            <column name="email" value="admin@mini-chronos.de"/>
+            <column name="password_hash" value="$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi."/>
+            <column name="first_name" value="System"/>
+            <column name="last_name" value="Admin"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="created_at" valueDate="2026-01-01T00:00:00"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+
+        <insert tableName="users">
+            <column name="id" valueNumeric="2"/>
+            <column name="username" value="m.mueller"/>
+            <column name="email" value="m.mueller@lang-gmbh.de"/>
+            <column name="password_hash" value="$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi."/>
+            <column name="first_name" value="Maria"/>
+            <column name="last_name" value="Müller"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="created_at" valueDate="2026-01-15T09:00:00"/>
+            <column name="updated_at" valueDate="2026-01-15T09:00:00"/>
+        </insert>
+
+        <insert tableName="users">
+            <column name="id" valueNumeric="3"/>
+            <column name="username" value="j.schmidt"/>
+            <column name="email" value="j.schmidt@mini-chronos.de"/>
+            <column name="password_hash" value="$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi."/>
+            <column name="first_name" value="Jonas"/>
+            <column name="last_name" value="Schmidt"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="created_at" valueDate="2026-01-15T09:00:00"/>
+            <column name="updated_at" valueDate="2026-01-15T09:00:00"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="users">
+                <where>id IN (1, 2, 3)</where>
+            </delete>
+        </rollback>
+
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ROLES                                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-seed-roles" author="dev" context="dev,test">
+
+        <insert tableName="roles">
+            <column name="id" valueNumeric="10"/>
+            <column name="user_id" valueNumeric="1"/>
+            <column name="role_type" value="ADMIN"/>
+            <column name="created_at" valueDate="2026-01-01T00:00:00"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+
+        <insert tableName="roles">
+            <column name="id" valueNumeric="11"/>
+            <column name="user_id" valueNumeric="2"/>
+            <column name="role_type" value="SALES"/>
+            <column name="created_at" valueDate="2026-01-15T09:00:00"/>
+            <column name="updated_at" valueDate="2026-01-15T09:00:00"/>
+        </insert>
+
+        <insert tableName="roles">
+            <column name="id" valueNumeric="12"/>
+            <column name="user_id" valueNumeric="3"/>
+            <column name="role_type" value="LOGISTICS"/>
+            <column name="created_at" valueDate="2026-01-15T09:00:00"/>
+            <column name="updated_at" valueDate="2026-01-15T09:00:00"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="roles">
+                <where>id IN (10, 11, 12)</where>
+            </delete>
+        </rollback>
+
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CUSTOMERS                                                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-seed-customers" author="dev" context="dev,test">
+
+        <insert tableName="customers">
+            <column name="id" valueNumeric="100"/>
+            <column name="name" value="Lang GmbH"/>
+            <column name="email" value="info@lang-gmbh.de"/>
+            <column name="phone_number" value="+49 2266 123456"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="created_at" valueDate="2026-01-20T10:00:00"/>
+            <column name="updated_at" valueDate="2026-01-20T10:00:00"/>
+        </insert>
+
+        <insert tableName="customers">
+            <column name="id" valueNumeric="101"/>
+            <column name="name" value="Messe Köln GmbH"/>
+            <column name="email" value="events@messe-koeln.de"/>
+            <column name="phone_number" value="+49 221 821 0"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="created_at" valueDate="2026-02-01T10:00:00"/>
+            <column name="updated_at" valueDate="2026-02-01T10:00:00"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="customers">
+                <where>id IN (100, 101)</where>
+            </delete>
+        </rollback>
+
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- EQUIPMENT UNITS                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-seed-equipment" author="dev" context="dev,test">
+
+        <insert tableName="equipment_units">
+            <column name="id" valueNumeric="200"/>
+            <column name="sku" value="PROJ-EPSON-L1755U-001"/>
+            <column name="name" value="Epson EB-L1755U"/>
+            <column name="description" value="15000 lm Laser Projektor, WUXGA, 3LCD"/>
+            <column name="type" value="PROJECTOR"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="daily_rate" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-01-10T08:00:00"/>
+            <column name="updated_at" valueDate="2026-01-10T08:00:00"/>
+        </insert>
+
+        <insert tableName="equipment_units">
+            <column name="id" valueNumeric="201"/>
+            <column name="sku" value="PROJ-EPSON-L1755U-002"/>
+            <column name="name" value="Epson EB-L1755U"/>
+            <column name="description" value="15000 lm Laser Projektor, WUXGA, 3LCD"/>
+            <column name="type" value="PROJECTOR"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="daily_rate" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-01-10T08:00:00"/>
+            <column name="updated_at" valueDate="2026-01-10T08:00:00"/>
+        </insert>
+
+        <insert tableName="equipment_units">
+            <column name="id" valueNumeric="202"/>
+            <column name="sku" value="PROJ-EPSON-L1755U-003"/>
+            <column name="name" value="Epson EB-L1755U"/>
+            <column name="description" value="15000 lm Laser Projektor, WUXGA, 3LCD"/>
+            <column name="type" value="PROJECTOR"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="daily_rate" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-01-10T08:00:00"/>
+            <column name="updated_at" valueDate="2026-01-10T08:00:00"/>
+        </insert>
+
+        <insert tableName="equipment_units">
+            <column name="id" valueNumeric="210"/>
+            <column name="sku" value="SCREEN-STUMPFL-240-001"/>
+            <column name="name" value="Stumpfl 240cm Leinwand"/>
+            <column name="description" value="Rahmen-Leinwand 240x135cm, 16:9"/>
+            <column name="type" value="SCREEN"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="daily_rate" valueNumeric="80.00"/>
+            <column name="created_at" valueDate="2026-01-10T08:00:00"/>
+            <column name="updated_at" valueDate="2026-01-10T08:00:00"/>
+        </insert>
+
+        <insert tableName="equipment_units">
+            <column name="id" valueNumeric="220"/>
+            <column name="sku" value="AUDIO-SENN-MD421-001"/>
+            <column name="name" value="Sennheiser MD 421 II"/>
+            <column name="description" value="Dynamisches Mikrofon, Niere"/>
+            <column name="type" value="AUDIO"/>
+            <column name="status" value="MAINTENANCE"/>
+            <column name="daily_rate" valueNumeric="25.00"/>
+            <column name="created_at" valueDate="2026-01-10T08:00:00"/>
+            <column name="updated_at" valueDate="2026-03-01T08:00:00"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="equipment_units">
+                <where>id IN (200, 201, 202, 210, 220)</where>
+            </delete>
+        </rollback>
+
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PROJECT + ORDER (User Story: Maria bucht Projektoren) -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-seed-project-and-order" author="dev" context="dev,test">
+
+        <insert tableName="projects">
+            <column name="id" valueNumeric="300"/>
+            <column name="customer_id" valueNumeric="101"/>
+            <column name="name" value="Jahreskonferenz 2026"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="start_date" valueDate="2026-04-13"/>
+            <column name="end_date" valueDate="2026-04-14"/>
+            <column name="description" value="Jährliche Konferenz im Congress-Centrum Köln"/>
+            <column name="created_at" valueDate="2026-04-10T16:00:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:00:00"/>
+        </insert>
+
+        <!--
+            version=0: начальное значение для optimistic locking.
+            Hibernate будет инкрементировать при каждом UPDATE.
+        -->
+        <insert tableName="orders">
+            <column name="id" valueNumeric="400"/>
+            <column name="project_id" valueNumeric="300"/>
+            <column name="order_number" value="ORD-2026-00000400"/>
+            <column name="status" value="CONFIRMED"/>
+            <column name="start_date" valueDate="2026-04-13"/>
+            <column name="end_date" valueDate="2026-04-14"/>
+            <column name="total_amount" valueNumeric="1350.00"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <!-- 3 проектора × 450€/день = 1350€ -->
+        <insert tableName="order_items">
+            <column name="id" valueNumeric="500"/>
+            <column name="order_id" valueNumeric="400"/>
+            <column name="equipment_id" valueNumeric="200"/>
+            <column name="quantity" valueNumeric="1"/>
+            <column name="unit_price" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <insert tableName="order_items">
+            <column name="id" valueNumeric="501"/>
+            <column name="order_id" valueNumeric="400"/>
+            <column name="equipment_id" valueNumeric="201"/>
+            <column name="quantity" valueNumeric="1"/>
+            <column name="unit_price" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <insert tableName="order_items">
+            <column name="id" valueNumeric="502"/>
+            <column name="order_id" valueNumeric="400"/>
+            <column name="equipment_id" valueNumeric="202"/>
+            <column name="quantity" valueNumeric="1"/>
+            <column name="unit_price" valueNumeric="450.00"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <!-- Availability records: все 3 проектора заняты 13-14 апреля -->
+        <insert tableName="availability">
+            <column name="id" valueNumeric="600"/>
+            <column name="equipment_id" valueNumeric="200"/>
+            <column name="order_item_id" valueNumeric="500"/>
+            <column name="start_date" valueDate="2026-04-13"/>
+            <column name="end_date" valueDate="2026-04-14"/>
+            <column name="status" value="RESERVED"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <insert tableName="availability">
+            <column name="id" valueNumeric="601"/>
+            <column name="equipment_id" valueNumeric="201"/>
+            <column name="order_item_id" valueNumeric="501"/>
+            <column name="start_date" valueDate="2026-04-13"/>
+            <column name="end_date" valueDate="2026-04-14"/>
+            <column name="status" value="RESERVED"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <insert tableName="availability">
+            <column name="id" valueNumeric="602"/>
+            <column name="equipment_id" valueNumeric="202"/>
+            <column name="order_item_id" valueNumeric="502"/>
+            <column name="start_date" valueDate="2026-04-13"/>
+            <column name="end_date" valueDate="2026-04-14"/>
+            <column name="status" value="RESERVED"/>
+            <column name="created_at" valueDate="2026-04-10T16:05:00"/>
+            <column name="updated_at" valueDate="2026-04-10T16:05:00"/>
+        </insert>
+
+        <!--
+            Maintenance block: микрофон в ремонте (без order_item_id = NULL).
+            Это демонстрирует nullable связь availability → order_items.
+        -->
+        <insert tableName="availability">
+            <column name="id" valueNumeric="610"/>
+            <column name="equipment_id" valueNumeric="220"/>
+            <column name="order_item_id"/>
+            <!-- NULL: нет order_item_id для maintenance -->
+            <column name="start_date" valueDate="2026-03-01"/>
+            <column name="end_date" valueDate="2026-04-30"/>
+            <column name="status" value="MAINTENANCE"/>
+            <column name="created_at" valueDate="2026-03-01T08:00:00"/>
+            <column name="updated_at" valueDate="2026-03-01T08:00:00"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="availability">
+                <where>id IN (600, 601, 602, 610)</where>
+            </delete>
+            <delete tableName="order_items">
+                <where>id IN (500, 501, 502)</where>
+            </delete>
+            <delete tableName="orders">
+                <where>id = 400</where>
+            </delete>
+            <delete tableName="projects">
+                <where>id = 300</where>
+            </delete>
+        </rollback>
+
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SEQUENCE SYNC: синхронизация sequence после ручной вставки данных  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet id="010-sync-sequence" author="dev" context="dev,test">
+        <!--
+            КРИТИЧЕСКИ ВАЖНО при ручной вставке с фиксированными ID!
+
+            Мы вставили записи с id: 1,2,3, 10,11,12, 100,101, 200..220, 300, 400, 500..502, 600..610.
+            Максимальный ID = 610.
+
+            Если sequence сейчас на значении 1 (первый старт), то:
+              Hibernate вызовет nextval() → получит 1
+              Попытается INSERT с id=1 → ОШИБКА: "duplicate key violates unique constraint"
+
+            Решение: сдвинуть sequence выше всех существующих ID.
+            setval(sequence, 700, true):
+              700 — новое значение (выше 610 с запасом, кратно allocationSize=50 для чистоты)
+              true — следующий nextval() вернёт 701 (не 700)
+
+            Это стандартная операция при любом seed с фиксированными ID.
+        -->
+        <sql>
+            SELECT setval('default_sequence', 700, true);
+        </sql>
+
+        <rollback>
+            <!-- Rollback sequence практически бессмысленен, но Liquibase требует явного rollback -->
+            <sql>SELECT setval('default_sequence', 1, false);</sql>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>
