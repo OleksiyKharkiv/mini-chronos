@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,5 +97,9 @@ public class User extends BaseEntity {
             return firstName + " " + lastName;
         }
         return userName;
+    }
+
+    public void setPassword_hash(@Nullable String encode) {
+        this.passwordHash = encode;
     }
 }
