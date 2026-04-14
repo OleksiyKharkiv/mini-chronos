@@ -97,7 +97,7 @@ spring:
     # contexts: какие changesets выполнять.
     # "dev" → выполняются changesets с context="dev,test" И без context (без context = всегда)
     # В prod application.yml: contexts: prod (seed data с context="dev,test" не выполнится)
-    #contexts: dev
+    contexts: dev
 
     # default-schema: схема PostgreSQL (public по умолчанию)
     # default-schema: public

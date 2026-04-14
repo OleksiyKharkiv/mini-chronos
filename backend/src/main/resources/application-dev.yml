@@ -1,0 +1,41 @@
+# application-dev.yml — настройки для профиля "dev"
+#
+# Активируется когда: SPRING_PROFILES_ACTIVE=dev
+# Мержится поверх application.yml: значения здесь ПЕРЕОПРЕДЕЛЯЮТ базовые.
+#
+# Принцип: application.yml = безопасные дефолты для всех окружений.
+#           application-dev.yml = удобства для разработки (подробные логи,
+#           SQL в консоли, seed-данные и т.д.).
+
+spring:
+  datasource:
+    # В dev читаем из env-переменных (заданы в docker-compose.yml или локально).
+    # Это позволяет запускать и в Docker (postgres:5432) и локально (localhost:5432).
+    url:      ${DB_URL:jdbc:postgresql://localhost:5432/mini_chronos}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+  jpa:
+    # В dev можно временно переключить на create-drop для сброса схемы.
+    # НО: с Liquibase всегда используй validate — Liquibase управляет схемой.
+    hibernate:
+      ddl-auto: none
+
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    contexts: dev   # выполняет changesets с context="dev,test" (seed data)
+    show-summary: true
+    show-summary-output: all
+# Подробные логи в dev — видим всё включая SQL параметры
+logging:
+  level:
+    de.alphaloop.chronos: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    liquibase: INFO
+    org.springframework.web: DEBUG

@@ -14,5 +14,20 @@
       "name": "spring.session.store-type",
       "type": "java.lang.String",
       "description": "Description for spring.session.store-type."
+    },
+    {
+      "name": "spring.liquibase.show-summary-output",
+      "type": "java.lang.String",
+      "description": "Description for spring.liquibase.show-summary-output."
+    },
+    {
+      "name": "spring.liquibase.show-summary",
+      "type": "java.lang.String",
+      "description": "Description for spring.liquibase.show-summary."
+    },
+    {
+      "name": "spring.liquibase.contexts",
+      "type": "java.lang.String",
+      "description": "Description for spring.liquibase.contexts."
     }
   ] }
