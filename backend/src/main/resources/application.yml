@@ -8,9 +8,12 @@ spring:
   application:
     name: mini-chronos
 
+  session:
+    store-type: none  # В нашем случае не используем HTTP сессии, так как аутентификация JWT stateless.
+
   # ── DATABASE ─────────────────────────────────────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/mini_chronos
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mini_chronos}
     username: ${DB_USERNAME:postgres}       # берёт из env-переменной, дефолт: postgres
     password: ${DB_PASSWORD:postgres}       # НИКОГДА не хардкодь реальные пароли!
     driver-class-name: org.postgresql.Driver
@@ -30,8 +33,6 @@ spring:
   # ── JPA / HIBERNATE ──────────────────────────────────────────────────────
   jpa:
     hibernate:
-      # ddl-auto: КРИТИЧЕСКИ ВАЖНАЯ настройка!
-      #
       # validate: Hibernate проверяет что схема БД соответствует entities,
       #           но НЕ изменяет её. Если расхождение → ошибка при старте.
       #           ПРАВИЛЬНЫЙ выбор когда используется Liquibase:
@@ -43,7 +44,7 @@ spring:
       # none: вообще не трогает схему.
       #
       # С Liquibase: всегда используй validate или none.
-      ddl-auto: validate
+      ddl-auto: none
 
     show-sql: true   # Логировать SQL в консоль (dev only, в prod = false)
 
@@ -96,7 +97,7 @@ spring:
     # contexts: какие changesets выполнять.
     # "dev" → выполняются changesets с context="dev,test" И без context (без context = всегда)
     # В prod application.yml: contexts: prod (seed data с context="dev,test" не выполнится)
-    contexts: dev
+    #contexts: dev
 
     # default-schema: схема PostgreSQL (public по умолчанию)
     # default-schema: public

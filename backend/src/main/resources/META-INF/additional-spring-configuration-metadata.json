@@ -1,0 +1,18 @@
+{
+  "properties": [
+    {
+      "name": "spring.liquibase.enabled",
+      "type": "java.lang.String",
+      "description": "Description for spring.liquibase.enabled."
+    },
+    {
+      "name": "spring.liquibase.change-log",
+      "type": "java.lang.String",
+      "description": "Description for spring.liquibase.change-log."
+    },
+    {
+      "name": "spring.session.store-type",
+      "type": "java.lang.String",
+      "description": "Description for spring.session.store-type."
+    }
+  ] }

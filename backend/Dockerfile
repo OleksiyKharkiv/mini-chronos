@@ -53,7 +53,7 @@ COPY src ./src
 # Собираем JAR, пропуская тесты (тесты гоняем отдельно в CI)
 # -B: batch mode (без интерактивных подсказок Maven)
 # -DskipTests: не запускать тесты при сборке образа
-RUN ./mvnw package -B -DskipTests
+RUN ./mvnw clean package -B -DskipTests
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 # eclipse-temurin:21-jre-alpine — минимальный JRE на Alpine Linux

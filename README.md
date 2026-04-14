@@ -8,7 +8,7 @@ built as practical preparation for an internship at Alpha Loop GmbH in Lindlar, 
 mini-chronos implements the **Auftragsabwicklung** (order processing) core of a rental ERP system —
 the same domain that Chronos uses for clients like Lang GmbH managing event equipment.
 
-The project focuses on the Spring Boot + Hibernate fundamentals that Sebastian asked about:
+The project focuses on the Spring Boot + Hibernate fundamentals relevant to this domain, such as:
 Hibernate relationships, Liquibase migrations, optimistic locking, and the N+1 problem.
 
 ---

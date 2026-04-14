@@ -23,12 +23,10 @@ services:
     container_name: mini-chronos-postgres
 
     environment:
-      # Значения берутся из .env файла (см. .env.example).
-      # Синтаксис ${VAR:-default}: если VAR не задана, используется default.
-      POSTGRES_DB:       ${POSTGRES_DB:-mini_chronos}
-      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
 
+      POSTGRES_DB: ${POSTGRES_DB:-mini_chronos}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       # Locale для PostgreSQL — важно для сортировки немецких символов (ä, ö, ü).
       # LC_COLLATE=de_DE.utf8: немецкая сортировка (ä после a, не в конце алфавита).
       # Для Lang GmbH в Линларе это принципиально.
