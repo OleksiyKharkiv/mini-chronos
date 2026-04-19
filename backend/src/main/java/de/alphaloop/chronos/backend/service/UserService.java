@@ -118,7 +118,7 @@ public class UserService {
         // Hash the password BEFORE setting it on the entity.
         // After this line, the plaintext password should never be used or logged.
         // BCrypt adds a random salt automatically — same password produces different hashes.
-        user.setPassword_hash(passwordEncoder.encode(plainTextPassword));
+        user.setPasswordHash(passwordEncoder.encode(plainTextPassword));
 
         // CascadeType.ALL on User.roles: save(user) would also save the role.
         // We use the factory method to keep the role creation logic in the domain class.

@@ -29,7 +29,7 @@ spring:
   liquibase:
     enabled: true
     contexts: dev   # выполняет changesets с context="dev,test" (seed data)
-    show-summary: true
+    show-summary: SUMMARY
     show-summary-output: all
 # Подробные логи в dev — видим всё включая SQL параметры
 logging:

@@ -9,120 +9,91 @@ spring:
     name: mini-chronos
 
   session:
-    store-type: none  # В нашем случае не используем HTTP сессии, так как аутентификация JWT stateless.
+    store-type: none  # JWT stateless — HTTP сессии не используем.
 
   # ── DATABASE ─────────────────────────────────────────────────────────────
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/mini_chronos}
-    username: ${DB_USERNAME:postgres}       # берёт из env-переменной, дефолт: postgres
-    password: ${DB_PASSWORD:postgres}       # НИКОГДА не хардкодь реальные пароли!
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
-    # HikariCP — connection pool (встроен в Spring Boot, лучший по производительности)
     hikari:
-      # Максимум одновременных подключений к БД.
-      # Для разработки: 5 достаточно.
-      # Для production с 200 пользователями: 20-50 (зависит от нагрузки).
-      # PostgreSQL по умолчанию принимает max 100 подключений.
       maximum-pool-size: 5
       minimum-idle: 2
-      # Время ожидания свободного соединения из pool (30 секунд)
       connection-timeout: 30000
       pool-name: MiniChronosPool
 
   # ── JPA / HIBERNATE ──────────────────────────────────────────────────────
   jpa:
     hibernate:
-      # validate: Hibernate проверяет что схема БД соответствует entities,
-      #           но НЕ изменяет её. Если расхождение → ошибка при старте.
-      #           ПРАВИЛЬНЫЙ выбор когда используется Liquibase:
-      #           Liquibase управляет схемой, Hibernate только проверяет.
-      #
-      # create-drop: удаляет и пересоздаёт схему при каждом старте — только для тестов!
-      # update: Hibernate пытается мигрировать схему — НИКОГДА в production!
-      #         Не умеет удалять колонки, может потерять данные.
-      # none: вообще не трогает схему.
-      #
-      # С Liquibase: всегда используй validate или none.
+      # none: Hibernate НЕ трогает схему — Liquibase управляет ею.
+      # validate: проверяет соответствие entity ↔ таблицы при старте (рекомендуется).
+      # Переключи на validate после создания всех Liquibase changesets.
       ddl-auto: none
 
-    show-sql: true   # Логировать SQL в консоль (dev only, в prod = false)
+    show-sql: true
 
     properties:
       hibernate:
-        # Форматировать SQL в логах — читаемо для отладки
         format_sql: true
-
-        # JDBC batch size: Hibernate накапливает INSERT/UPDATE и отправляет батчами.
-        # Синергия с allocationSize=50 в BaseEntity:
-        #   Sequence резервирует 50 ID → Hibernate может сделать 50 INSERT одним batch.
-        # Значение = allocationSize из @SequenceGenerator.
         jdbc:
           batch_size: 50
-
-        # order_inserts/updates: группировать операции одного типа вместе.
-        # Без этого: INSERT user, INSERT order, INSERT user, INSERT order...
-        # С этим:   INSERT user, INSERT user, INSERT order, INSERT order...
-        # Второй вариант лучше для batch processing.
         order_inserts: true
         order_updates: true
 
-        # default_schema: если используешь non-public schema в PostgreSQL.
-        # Для MVP оставляем public (по умолчанию).
-        # default_schema: public
-
-    # open-in-view: ОТКЛЮЧИТЬ ОБЯЗАТЕЛЬНО!
-    #
-    # Что это: Spring MVC по умолчанию держит Hibernate Session открытой
-    # на протяжении всего HTTP запроса (от получения до отправки ответа).
-    # Это позволяет LAZY загрузку работать даже в контроллере/шаблоне.
-    #
-    # Почему это плохо:
-    #   1. Соединение с БД занято на всё время рендеринга ответа (медленно!)
-    #   2. Скрывает N+1 проблемы: они "работают", но невидимо тратят ресурсы
-    #   3. Бизнес-логика и DB-логика смешиваются — нарушение слоёв
-    #
-    # С open-in-view=false: LazyInitializationException при доступе к lazy
-    # коллекции вне транзакции — это ХОРОШО! Явно указывает где нужен @EntityGraph.
+    # ВАЖНО: отключить open-in-view!
+    # Держит DB-соединение открытым на всё время HTTP-запроса.
+    # Скрывает N+1 проблемы и нарушает границы слоёв.
+    # С false: LazyInitializationException явно укажет где нужен @EntityGraph.
     open-in-view: false
 
   # ── LIQUIBASE ─────────────────────────────────────────────────────────────
+  # Spring Boot автоматически настраивает Liquibase из этих свойств.
+  # НЕ нужен отдельный @Bean SpringLiquibase — автоконфигурация делает всё!
   liquibase:
-    # enabled: включить Liquibase (true по умолчанию, но явно лучше)
     enabled: true
-
-    # change-log: путь к master changelog относительно classpath (src/main/resources)
     change-log: classpath:db/changelog/db.changelog-master.xml
-
-    # contexts: какие changesets выполнять.
-    # "dev" → выполняются changesets с context="dev,test" И без context (без context = всегда)
-    # В prod application.yml: contexts: prod (seed data с context="dev,test" не выполнится)
+    # dev: выполняет changesets с context="dev" И без context (всегда).
+    # prod: changesets с context="dev" (тестовые данные) НЕ выполняются.
     contexts: dev
-
-    # default-schema: схема PostgreSQL (public по умолчанию)
-    # default-schema: public
-
-    # drop-first: НИКОГДА не ставить true в production! Удаляет всю схему перед миграцией.
-    # drop-first: false  # default
-
-  # ── JPA AUDITING ──────────────────────────────────────────────────────────
-  # @EnableJpaAuditing должна быть на @Configuration классе!
-  # Без неё @CreatedDate и @LastModifiedDate в BaseEntity не заполняются → null → ошибка.
-  # Создай класс: @Configuration @EnableJpaAuditing public class JpaConfig {}
 
 # ── SERVER ──────────────────────────────────────────────────────────────────
 server:
   port: 8080
 
+# ── APP-SPECIFIC CONFIGURATION ──────────────────────────────────────────────
+# Кастомные свойства приложения — читаются через @Value в компонентах.
+app:
+  jwt:
+    # Секрет для подписи JWT токенов (HS256).
+    # ТРЕБОВАНИЕ: минимум 32 символа (256 бит для HS256).
+    # В production: переопределяй через переменную окружения APP_JWT_SECRET.
+    # НИКОГДА не коммить реальный секрет в Git!
+    secret: ${APP_JWT_SECRET:mini-chronos-dev-secret-key-at-least-32-chars}
+
+    # Время жизни access token (в миллисекундах).
+    # 900000 = 15 минут — стандарт для ERP-систем.
+    # Короткое время жизни: если токен украден — быстро протухнет.
+    access-token-expiration: 900000
+
+    # Время жизни refresh token (в миллисекундах).
+    # 604800000 = 7 дней — пользователь не переходит каждую неделю.
+    refresh-token-expiration: 604800000
+
+  cors:
+    # Разрешённые origins для CORS.
+    # dev: Angular dev server на порту 4200.
+    # prod: переопределить через APP_CORS_ALLOWED_ORIGINS=https://chronos.alphaloop.de
+    # Несколько origins через запятую: http://localhost:4200,https://staging.example.com
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
 # ── LOGGING ─────────────────────────────────────────────────────────────────
 logging:
   level:
-    # SQL от Hibernate (дублирует show-sql, но с параметрами!)
     org.hibernate.SQL: DEBUG
-    # Значения параметров в SQL запросах (?1, ?2 → реальные значения)
-    # ВНИМАНИЕ: может логировать sensitive data (пароли) — только dev!
+    # TRACE показывает реальные значения параметров запросов.
+    # ВНИМАНИЕ: может логировать sensitive data (пароли, токены) — только dev!
     org.hibernate.orm.jdbc.bind: TRACE
-    # Liquibase: показывать выполняемые changesets
     liquibase: INFO
-    # Наш пакет: всё на DEBUG в разработке
     de.alphaloop.chronos: DEBUG

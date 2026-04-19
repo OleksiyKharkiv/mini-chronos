@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
  *   try { order.confirm(); }
  *   catch (IllegalStateException e) { throw new BusinessRuleException(e.getMessage()); }
  */
-@ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+@ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
 public class BusinessRuleException extends RuntimeException {
 
     public BusinessRuleException(String message) {

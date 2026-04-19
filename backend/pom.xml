@@ -1,157 +1,205 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.4.1</version>
+        <relativePath/>
     </parent>
+
     <groupId>de.alphaloop.chronos</groupId>
-    <artifactId>backend</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>backend</name>
-    <description>backend project</description>
+    <artifactId>mini-chronos-backend</artifactId>
+    <version>0.1.0-MVP</version>
+    <packaging>jar</packaging>
+
+    <description>
+        Simplified ERP rental module inspired by Alpha Loop Chronos.
+        Demonstrates Spring Data JPA, Hibernate, Liquibase, JWT Security, MapStruct.
+    </description>
+
     <properties>
         <java.version>21</java.version>
+
+        <!-- springdoc НЕ в Spring Boot BOM — версию указываем явно.
+             ВАЖНО: 2.x для Spring Boot 3.x, 1.x для 2.x — частая ошибка! -->
+        <springdoc.version>2.7.0</springdoc.version>
+
+        <!-- MapStruct: compile-time маппинг entity <-> DTO.
+             Annotation processor генерирует чистый Java-код.
+             Быстрее ModelMapper (reflection) в 10-100 раз. -->
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+
+        <!-- КРИТИЧНО: решает проблему порядка annotation processors Lombok + MapStruct.
+             БЕЗ него MapStruct отрабатывает ДО Lombok — геттеры ещё не созданы —
+             ошибки компиляции: "No property named 'name' exists in source parameter(s)" -->
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
+
     <dependencies>
+
+        <!-- ═══════════════════════════════════════════════════ WEB -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+
+        <!-- @NotBlank, @Size, @Email, @Valid.
+             Отдельная зависимость с Spring Boot 2.3+. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+
+        <!-- ═══════════════════════════════════════════════════ DATA -->
+        <!-- Включает: Hibernate 6, Spring Data JPA, HikariCP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-docker-compose</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Source: https://mvnrepository.com/artifact/org.liquibase/liquibase-core -->
+
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
         </dependency>
-        <!-- Source: https://mvnrepository.com/artifact/org.mapstruct/mapstruct -->
+
+        <!-- ═══════════════════════════════════════════════════ SECURITY -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Включает nimbus-jose-jwt транзитивно:
+             NimbusJwtDecoder (валидация) + NimbusJwtEncoder (генерация).
+             Отдельный jjwt/auth0-jwt НЕ нужен. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- ═══════════════════════════════════════════════════ DOCS -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- ═══════════════════════════════════════════════════ MAPSTRUCT -->
+
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>1.5.5.Final</version>
+            <version>${mapstruct.version}</version>
         </dependency>
+
+        <!-- ═══════════════════════════════════════════════════ LOMBOK -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <!-- ═══════════════════════════════════════════════════ TEST -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
-            <groupId>org.springframework.restdocs</groupId>
-            <artifactId>spring-restdocs-mockmvc</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-ui -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>1.8.0</version>
-            <scope>compile</scope>
-        </dependency>
+
     </dependencies>
 
     <build>
         <plugins>
+
+            <!--
+            ═══════════════════════════════════════════════════════════════
+            MAVEN COMPILER PLUGIN — КРИТИЧНО для Lombok + MapStruct
+            ═══════════════════════════════════════════════════════════════
+
+            ПРОБЛЕМА: annotation processors запускаются в неопределённом порядке.
+            Если MapStruct запустится ДО Lombok:
+              → геттеры/сеттеры ещё не созданы Lombok-ом
+              → MapStruct не видит getName(), setEmail() и т.д.
+              → ошибка: "No property named 'name' exists in source parameter(s)"
+              → все 5 маппер-интерфейсов не компилируются
+
+            РЕШЕНИЕ: annotationProcessorPaths задаёт явный порядок:
+              1. lombok-mapstruct-binding  — гарантирует что Lombok идёт первым
+              2. lombok                    — генерирует геттеры/сеттеры/конструкторы
+              3. mapstruct-processor       — генерирует маппинг на основе готовых методов
+
+            ВАЖНО: annotationProcessorPaths — это НЕ то же самое что <dependencies>!
+            Зависимости здесь используются ТОЛЬКО annotation processor-ами (compile-time).
+            В финальный JAR они НЕ попадают.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                     <annotationProcessorPaths>
                         <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>1.5.5.Final</version>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
                         </path>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
+                            <!-- ${lombok.version} управляется Spring Boot BOM — не хардкодим -->
                         </path>
                         <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <!--
+                        Глобальный default: все @Mapper-интерфейсы получают
+                        componentModel=spring автоматически.
+                        Явный @Mapper(componentModel = "spring") в коде остаётся
+                        для самодокументации, но без него тоже сработает.
+                        -->
+                        <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.asciidoctor</groupId>
-                <artifactId>asciidoctor-maven-plugin</artifactId>
-                <version>2.2.1</version>
-                <executions>
-                    <execution>
-                        <id>generate-docs</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>process-asciidoc</goal>
-                        </goals>
-                        <configuration>
-                            <backend>html</backend>
-                            <doctype>book</doctype>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <!-- Source: https://mvnrepository.com/artifact/org.springframework.restdocs/spring-restdocs-asciidoctor -->
 
-                </dependencies>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <excludes>
                         <exclude>
+                            <!-- Lombok нужен только compile-time. В runtime он не нужен:
+                                 геттеры уже "вшиты" в байткод. Убираем ~500KB из JAR. -->
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
+
 </project>

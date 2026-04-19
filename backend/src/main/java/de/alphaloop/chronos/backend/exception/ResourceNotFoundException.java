@@ -1,5 +1,6 @@
 package de.alphaloop.chronos.backend.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
  * @ResponseStatus: when Spring MVC renders an unhandled exception,
  * it uses this annotation as the HTTP status. Belt-and-suspenders with @ControllerAdvice.
  */
+@Getter
 @ResponseStatus(HttpStatus.NOT_FOUND)
 public class ResourceNotFoundException extends RuntimeException {
 
@@ -68,6 +70,4 @@ public class ResourceNotFoundException extends RuntimeException {
         return new ResourceNotFoundException("User", id);
     }
 
-    public String getEntityName() { return entityName; }
-    public Object getEntityId()   { return entityId; }
 }
